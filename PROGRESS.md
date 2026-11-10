@@ -6,6 +6,8 @@
 
 Android 首版已实现。支持为多个 App 设置独立戒律、本机保存、前台计时、到期禁用与恢复，以及修改和移除保护。欢迎页、戒律、设置和戒律长老禁用页已接入。禁用页提供「斩退心魔」和「回洞府」两个退出入口。
 
+签名 APK 已在 GitHub 发布为 [v0.2 预发布版](https://github.com/grovecai/goule/releases/tag/v0.2)。发布包通过签名校验和 Android 15 模拟器的全新安装及启动检查。见 [v0.2 发布包验证](docs/verification.md#v02-发布包验证)。
+
 ## 已验证
 
 - `./scripts/check` 通过，涵盖仓库检查、Lint、单元测试和调试 APK 构建。
