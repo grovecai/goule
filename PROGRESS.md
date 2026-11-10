@@ -13,6 +13,7 @@ Android 首版已实现。支持为多个 App 设置独立戒律、本机保存�
 - `./scripts/check` 通过，涵盖仓库检查、Lint、单元测试和调试 APK 构建。
 - Android 15 模拟器走通首次授权入口、戒律配置与禁用流程，并核对短屏渲染。
 - OPPO PLJ110（Android 16、ColorOS 16.1.0）验证了禁用页拦截触摸、系统返回桌面、最近任务点回后恢复遮罩，以及直接解锁和从桌面重进两条路径均保留剩余可刷时长。
+- OPPO PLJ110 上，GitHub v0.2 签名 APK 的全新安装、系统无障碍授权和禁用遮罩均通过。见 [OPPO 签名发布包记录](docs/verification.md#oppo-plj110-v02-签名发布包)。
 
 ## 待验证与下一步
 
