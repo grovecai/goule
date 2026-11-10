@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+git diff --check
+git diff --cached --check
+python3 scripts/check_repository.py
+echo "Repository checks passed."
+
+if [[ -e gradlew || -e settings.gradle || -e settings.gradle.kts ]]; then
+    if [[ ! -x gradlew ]]; then
+        echo "Android checks require an executable Gradle Wrapper at ./gradlew." >&2
+        exit 1
+    fi
+    ./gradlew check assembleDebug
+else
+    echo "Android build and tests skipped: Gradle project pending."
+fi
