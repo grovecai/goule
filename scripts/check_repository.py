@@ -8,6 +8,7 @@ from urllib.parse import unquote, urlsplit
 required = [
     Path("README.md"),
     Path("AGENTS.md"),
+    Path("PROGRESS.md"),
     Path("docs/android-design.md"),
     Path("docs/implementation-plan.md"),
     Path("docs/verification.md"),
