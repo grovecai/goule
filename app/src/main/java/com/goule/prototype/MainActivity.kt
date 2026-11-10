@@ -1,126 +1,828 @@
 package com.goule.prototype
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.text.InputType
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextWatcher
+import android.text.Editable
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
+import android.text.style.RelativeSizeSpan
+import android.graphics.Typeface
+import android.view.Gravity
+import android.view.View
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.Space
 import android.widget.TextView
+import android.widget.Toast
 
 class MainActivity : Activity() {
-    private val preferences by lazy { prototypeSettings() }
-    private lateinit var status: TextView
-    private lateinit var target: TextView
-    private val refreshConnection = Runnable { updateServiceStatus() }
+    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP }
+    private enum class ServiceState { OFF, CONNECTING, ON, PAUSED }
+
+    private val store by lazy { RuleStore.get(this) }
+    private val handler = Handler(Looper.getMainLooper())
+    private var page = Page.WELCOME
+    private var permissionOrigin = Page.WELCOME
+    private var helpOrigin = Page.RULES
+    private var targets = emptyList<TargetApp>()
+    private var targetId: String? = null
+    private var replacingId: String? = null
+    private var editing = false
+    private var draftUse = ""
+    private var draftBlock = ""
+    private var dirty = false
+    private var query = ""
+    private var awaitingFirstConnection = false
+    private var pickerReturn = Page.RULES
+    private var appState = ServiceState.OFF
+    private var visibleSignature = emptyList<String>()
+    private lateinit var root: LinearLayout
+    private lateinit var scroll: ScrollView
+    private lateinit var content: LinearLayout
+    private val refresh = object : Runnable {
+        override fun run() {
+            updateStatus()
+            handler.postDelayed(this, 1_000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val spacing = (24 * resources.displayMetrics.density).toInt()
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(spacing, spacing, spacing, spacing)
-            setOnApplyWindowInsetsListener { view, insets ->
-                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-                view.setPadding(bars.left + spacing, bars.top + spacing, bars.right + spacing, bars.bottom + spacing)
-                insets
-            }
+        page = when (val savedPage = savedInstanceState?.getString("page")) {
+            "TIMING", "PRIVACY" -> Page.SETTINGS
+            else -> Page.entries.firstOrNull { it.name == savedPage }
         }
-        status = TextView(this)
-        target = TextView(this)
-        content.addView(status)
-        content.addView(target)
-        content.addView(TextView(this).apply {
-            text = getString(R.string.timing, QUOTA_MS / 1000, FREEZE_MS / 1000)
-        })
-        content.addView(Button(this).apply {
-            setText(R.string.choose_target)
-            setOnClickListener { chooseTarget() }
-        })
-        content.addView(Button(this).apply {
-            setText(R.string.clear_target)
-            setOnClickListener {
-                preferences.edit().remove(TARGET_KEY).apply()
-                refresh()
-            }
-        })
-        content.addView(Button(this).apply {
-            setText(R.string.open_settings)
-            setOnClickListener {
-                if (preferences.getBoolean(CONSENT_KEY, false)) {
-                    openSettings()
-                } else {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle(R.string.consent_title)
-                        .setMessage(R.string.disclosure)
-                        .setNegativeButton(R.string.later, null)
-                        .setPositiveButton(R.string.consent_open) { _, _ ->
-                            preferences.edit().putBoolean(CONSENT_KEY, true).apply()
-                            openSettings()
-                        }
-                        .show()
-                }
-            }
-        })
-        setContentView(content)
+            ?: if (store.welcomed) Page.RULES else Page.WELCOME
+        savedInstanceState?.let {
+            permissionOrigin = Page.valueOf(it.getString("origin", Page.WELCOME.name))
+            helpOrigin = Page.valueOf(it.getString("helpOrigin", Page.RULES.name))
+            pickerReturn = Page.valueOf(it.getString("pickerReturn", Page.RULES.name))
+            targetId = it.getString("target")
+            replacingId = it.getString("replacing")
+            editing = it.getBoolean("editing")
+            draftUse = it.getString("use", "")
+            draftBlock = it.getString("block", "")
+            dirty = it.getBoolean("dirty")
+            query = it.getString("query", "")
+            awaitingFirstConnection = it.getBoolean("awaiting")
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(0) { back() }
+        }
+        targets = eligibleTargets()
+        appState = serviceState()
+        render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("page", page.name)
+        outState.putString("origin", permissionOrigin.name)
+        outState.putString("helpOrigin", helpOrigin.name)
+        outState.putString("pickerReturn", pickerReturn.name)
+        outState.putString("target", targetId)
+        outState.putString("replacing", replacingId)
+        outState.putBoolean("editing", editing)
+        outState.putString("use", draftUse)
+        outState.putString("block", draftBlock)
+        outState.putBoolean("dirty", dirty)
+        outState.putString("query", query)
+        outState.putBoolean("awaiting", awaitingFirstConnection)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
         super.onResume()
-        refresh()
+        val freshTargets = eligibleTargets()
+        val changed = freshTargets != targets
+        targets = freshTargets
+        updateStatus(changed)
+        handler.postDelayed(refresh, 1_000)
     }
 
     override fun onPause() {
-        status.removeCallbacks(refreshConnection)
+        handler.removeCallbacks(refresh)
         super.onPause()
     }
 
-    private fun refresh() {
-        updateServiceStatus()
-        val selected = preferences.getString(TARGET_KEY, null)
-        val app = eligibleTargets().find { it.packageName == selected }
-        target.text = if (app == null) getString(R.string.target_none)
-            else getString(R.string.target_selected, app.label)
-    }
+    @Deprecated("Used by Android 11 and 12")
+    override fun onBackPressed() = back()
 
-    private fun updateServiceStatus() {
-        status.removeCallbacks(refreshConnection)
-        val service = ComponentName(this, FreezeService::class.java)
-        val enabledProviders = Settings.Secure.getString(
-            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        )
+    private fun serviceState(): ServiceState {
+        val component = ComponentName(this, FreezeService::class.java)
         val enabled = Settings.Secure.getInt(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) == 1 &&
-            enabledProviders.orEmpty().split(':').any { ComponentName.unflattenFromString(it) == service }
-        val label = when {
-            !enabled || !preferences.getBoolean(CONSENT_KEY, false) -> R.string.service_disabled
-            FreezeService.connected -> R.string.service_connected
-            else -> R.string.service_pending
-        }
-        status.setText(label)
-        if (label == R.string.service_pending) {
-            status.postDelayed(refreshConnection, 500)
+            Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+                .orEmpty().split(':').any { ComponentName.unflattenFromString(it) == component }
+        return when {
+            store.consent && enabled && FreezeService.connected -> ServiceState.ON
+            store.consent && enabled -> ServiceState.CONNECTING
+            store.activated -> ServiceState.PAUSED
+            else -> ServiceState.OFF
         }
     }
 
-    private fun chooseTarget() {
-        val apps = eligibleTargets()
-        val dialog = AlertDialog.Builder(this).setTitle(R.string.choose_target)
-        if (apps.isEmpty()) {
-            dialog.setMessage(R.string.no_targets).setPositiveButton(android.R.string.ok, null)
-        } else {
-            val items = apps.map { "${it.label}\n${it.packageName}" }.toTypedArray()
-            dialog.setItems(items) { _, index ->
-                preferences.edit().putString(TARGET_KEY, apps[index].packageName).apply()
-                refresh()
+    private fun updateStatus(targetsChanged: Boolean = false) {
+        val previous = appState
+        appState = serviceState()
+        if (appState == ServiceState.ON) {
+            if (!store.activated) store.activate()
+            if (awaitingFirstConnection && (page == Page.RULES || page == Page.SETTINGS)) {
+                awaitingFirstConnection = false
+                if (store.rules.isEmpty()) {
+                    openPicker()
+                    return
+                }
             }
         }
-        dialog.show()
+        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER) &&
+            (targetsChanged || previous != appState || visibleSignature != signature())
+        ) render(keepScroll = true)
     }
 
-    private fun openSettings() {
-        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    private fun serviceStatusLabel() = when (appState) {
+        ServiceState.ON -> "已连接"
+        ServiceState.CONNECTING -> "正在连接"
+        ServiceState.PAUSED, ServiceState.OFF -> "未开启"
     }
+
+    private fun signature(): List<String> {
+        val now = store.now()
+        return when (page) {
+            Page.RULES -> store.rules.map { ruleStatus(it, now) }
+            Page.DETAIL -> currentRule()?.let {
+                listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
+            }.orEmpty()
+            else -> emptyList()
+        }
+    }
+
+    private fun go(destination: Page) {
+        page = destination
+        render()
+    }
+
+    private val welcomeBackdrop by lazy { IllustratedBackdrop(this, welcome = true) }
+    private val rulesBackdrop by lazy { IllustratedBackdrop(this, welcome = false) }
+
+    private fun render(keepScroll: Boolean = false) {
+        val oldY = if (keepScroll) scroll.scrollY else 0
+        root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = when (page) {
+                Page.WELCOME -> welcomeBackdrop
+                Page.RULES -> if (store.rules.isEmpty()) nightSurface() else rulesBackdrop
+                else -> nightSurface()
+            }
+            setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                val ime = insets.getInsets(WindowInsets.Type.ime())
+                view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+                insets
+            }
+        }
+        scroll = ScrollView(this).apply {
+            isFillViewport = true
+            if (page == Page.RULES && store.rules.isNotEmpty()) {
+                setOnScrollChangeListener { view, _, y, _, _ ->
+                    val opacity = (y.toFloat() / dp(136)).coerceIn(0f, 1f) * 232
+                    view.setBackgroundColor((NIGHT and 0x00ffffff) or (opacity.toInt() shl 24))
+                }
+            }
+        }
+        content = column(if (page == Page.RULES && store.rules.isNotEmpty()) 11 else 14).apply {
+            clipToPadding = false
+            setPadding(dp(19), if (page == Page.RULES && store.rules.isNotEmpty()) 0 else dp(12), dp(19), dp(16))
+            isFocusableInTouchMode = true
+        }
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        when (page) {
+            Page.WELCOME -> welcome()
+            Page.PERMISSION -> permission()
+            Page.RULES -> rules()
+            Page.SETTINGS -> settings()
+            Page.PICKER -> picker()
+            Page.FORM -> form()
+            Page.DETAIL -> detail()
+            Page.REMOVE -> removePage()
+            Page.DISCARD -> discardPage()
+            Page.HELP -> help()
+        }
+        if (page == Page.RULES || page == Page.SETTINGS) bottomNavigation()
+        visibleSignature = signature()
+        setContentView(root)
+        val lightBars = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        window.insetsController?.setSystemBarsAppearance(0, lightBars)
+        root.requestApplyInsets()
+        if (oldY > 0) scroll.post { scroll.scrollTo(0, oldY) }
+    }
+
+    private fun column(gap: Int = 0): LinearLayout = object : LinearLayout(this) {
+        override fun onViewAdded(child: View) {
+            super.onViewAdded(child)
+            if (childCount > 1 && gap > 0) (child.layoutParams as LayoutParams).topMargin = dp(gap)
+        }
+    }.apply { orientation = LinearLayout.VERTICAL }
+
+    private fun row() = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+
+    private fun card(gap: Int = 8, fill: Int = NIGHT_PANEL, border: Int? = NIGHT_LINE) = column(gap).apply {
+        background = surface(fill, 12, border)
+        setPadding(dp(13), dp(13), dp(13), dp(13))
+    }
+
+    private fun button(
+        label: String, primary: Boolean = false, soft: Boolean = false, action: () -> Unit,
+    ) = Button(this).apply {
+        text = label
+        textSize = 14f
+        isAllCaps = false
+        includeFontPadding = false
+        minHeight = dp(44)
+        minimumHeight = dp(44)
+        minWidth = 0
+        minimumWidth = 0
+        stateListAnimator = null
+        backgroundTintList = null
+        gravity = if (primary || soft) Gravity.CENTER else Gravity.START or Gravity.CENTER_VERTICAL
+        val inset = if (primary || soft) dp(13) else 0
+        setPadding(inset, dp(4), inset, dp(4))
+        setTextColor(if (primary) INK else NIGHT_TEXT)
+        val fill = if (primary) NIGHT_GOLD else if (soft) NIGHT_PANEL else Color.TRANSPARENT
+        val radius = if (soft) 22 else 12
+        val fillDrawable = if (primary) GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(0xffffe386.toInt(), 0xffffbc3d.toInt())).apply {
+            cornerRadius = dp(radius).toFloat()
+        } else surface(fill, radius)
+        background = RippleDrawable(ColorStateList.valueOf(if (primary) 0x22000000 else 0x22ffffff),
+            fillDrawable, surface(Color.WHITE, radius))
+        if (primary) {
+            setTypeface(typeface, Typeface.BOLD)
+            paint.isFakeBoldText = true
+            minimumHeight = dp(48)
+        }
+        setOnClickListener { action() }
+    }
+
+    private fun heading(label: String, size: Float = 29f) = copyText(label, size, bold = true).apply {
+        isAccessibilityHeading = true
+        letterSpacing = -.04f
+    }
+
+    private fun up() {
+        content.addView(button("← 返回") { back() }.apply { setTextColor(NIGHT_MUTED) },
+            LinearLayout.LayoutParams(-2, -2))
+    }
+
+    private fun footer(
+        label: String, secondaryLabel: String? = null,
+        secondary: (() -> Unit)? = null, action: () -> Unit,
+    ) {
+        val group = column(4)
+        group.addView(button(label, primary = true, action = action))
+        if (secondaryLabel != null && secondary != null) {
+            group.addView(button(secondaryLabel, soft = true, action = secondary))
+        }
+        if (page == Page.WELCOME) content.addView(group)
+        else root.addView(group, LinearLayout.LayoutParams(-1, -2).apply {
+            setMargins(dp(19), dp(4), dp(19), dp(12))
+        })
+    }
+
+    private fun welcome() {
+        val title = "斩断无尽的下滑\n守住道心"
+        val colorTitle = SpannableString(title).apply {
+            setSpan(ForegroundColorSpan(NIGHT_GOLD), title.indexOf('\n') + 1, title.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        val height = resources.configuration.screenHeightDp
+        val short = height < 700
+        content.setPadding(dp(19), dp(if (short) 14 else 30), dp(19), dp(18))
+        content.addView(copyText(colorTitle, 34f, NIGHT_TEXT, true).apply {
+            isAccessibilityHeading = true
+            setLineSpacing(0f, 1f)
+            letterSpacing = -.06f
+        })
+        content.addView(Space(this), LinearLayout.LayoutParams(-1, dp(if (short) 130 else 180), 1f))
+        content.addView(copyText("你清醒时立下戒律\n心魔上头时，替你斩断刷屏循环", 16f, NIGHT_TEXT, true))
+        val example = card(fill = 0xfffff3da.toInt(), border = null).apply {
+            addView(row().apply {
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.sample_video)
+                    contentDescription = "示例短视频 App"
+                }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(12) })
+                addView(durations(DEFAULT_USE, DEFAULT_BLOCK, INK, inline = true), LinearLayout.LayoutParams(0, -2, 1f))
+            })
+        }
+        content.addView(example)
+        footer("立下第一条戒律") {
+            permissionOrigin = Page.WELCOME
+            go(Page.PERMISSION)
+        }
+    }
+
+    private fun permission() {
+        up()
+        content.addView(heading("开启无障碍服务"))
+        content.addView(copyText(getString(R.string.disclosure), 14f, NIGHT_MUTED))
+        fun destination() = when (permissionOrigin) {
+            Page.SETTINGS -> Page.SETTINGS
+            Page.HELP -> helpOrigin
+            else -> Page.RULES
+        }
+        footer(getString(R.string.consent_open), secondaryLabel = "稍后", secondary = {
+            store.welcome()
+            go(destination())
+        }) {
+            store.welcome()
+            val first = !store.activated
+            store.approve()
+            awaitingFirstConnection = first
+            go(destination())
+            openSystemSettings()
+        }
+    }
+
+    private fun rules() {
+        val now = store.now()
+        if (store.rules.isEmpty()) content.addView(heading("戒律"))
+        else {
+            val height = resources.configuration.screenHeightDp
+            content.addView(Space(this), LinearLayout.LayoutParams(-1, dp((height * .43f).toInt())))
+            content.addView(row().apply {
+                val words = "道心自己守\n心魔上头，一剑斩断"
+                val title = SpannableString(words)
+                for ((word, color) in listOf("道心" to 0xffa9e5c1.toInt(), "斩断" to NIGHT_GOLD)) {
+                    val start = words.indexOf(word)
+                    title.setSpan(ForegroundColorSpan(color), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    title.setSpan(StyleSpan(Typeface.BOLD), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    title.setSpan(RelativeSizeSpan(1.16f), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                val titleSize = (resources.configuration.screenWidthDp - 90).times(.0765f).coerceIn(18f, 23f)
+                addView(copyText(title, titleSize, NIGHT_TEXT, bold = true).apply {
+                    isAccessibilityHeading = true
+                    letterSpacing = -.035f
+                },
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                addView(button("＋", soft = true) { openPicker() }.apply {
+                    contentDescription = "添加心魔"
+                    textSize = 25f
+                    setPadding(0, 0, 0, 0)
+                    setTextColor(WARNING)
+                    background = surface(0xfff8d990.toInt(), 9)
+                }, LinearLayout.LayoutParams(dp(44), -2).apply { marginStart = dp(8) })
+            })
+        }
+        if (appState != ServiceState.ON) content.addView(card(3, WARM, null).apply {
+            val connecting = appState == ServiceState.CONNECTING
+            val title = if (appState == ServiceState.PAUSED) "戒律已暂停" else "戒律未生效"
+            val message = if (connecting) "无障碍服务正在连接，连接后戒律才会生效。"
+                else "开启无障碍服务后，戒律才会生效。"
+            addView(copyText(title, 15f, WARNING, true))
+            addView(copyText(message, 14f, WARNING))
+            addView(button(if (connecting) "检查服务" else "去开启") { requestPermission() }.apply {
+                setTextColor(WARNING)
+            })
+            addView(button("查看开启帮助") { helpOrigin = page; go(Page.HELP) }.apply { setTextColor(WARNING) })
+        })
+        if (store.rules.isEmpty()) {
+            content.addView(column(8).apply {
+                addView(copyText("挑一个让你刷到停不下来的 App，给它立条戒", 17f, NIGHT_TEXT, true))
+                addView(button("立下第一条戒律") { openPicker() })
+            })
+            return
+        }
+        val items = store.rules.sortedWith(compareByDescending<Rule> { it.isBlocked(now) }
+            .thenBy { if (it.isBlocked(now)) it.blockedUntil else null }.thenBy { it.label })
+        content.addView(column().apply {
+            divider(this, NIGHT_LINE)
+            for (rule in items) {
+                addView(column(7).apply {
+                    setPadding(0, dp(11), 0, dp(11))
+                    isFocusable = true
+                    setOnClickListener { showRule(rule.packageName) }
+                    addView(appRow(rule.packageName, rule.label, ruleStatus(rule, now), NIGHT_TEXT))
+                    addView(durations(rule.useMinutes, rule.blockMinutes, NIGHT_TEXT, inline = true),
+                        LinearLayout.LayoutParams(-1, -2).apply { marginStart = dp(48) })
+                })
+                divider(this, NIGHT_LINE)
+            }
+        })
+    }
+
+    private fun divider(parent: LinearLayout, color: Int = NIGHT_LINE) {
+        parent.addView(View(this).apply { setBackgroundColor(color) }, LinearLayout.LayoutParams(-1, dp(1)))
+    }
+
+    private fun iconFor(id: String): ImageView = ImageView(this).apply {
+        val icon = runCatching { packageManager.getApplicationIcon(id) }.getOrNull()
+        setImageDrawable(icon ?: getDrawable(android.R.drawable.ic_menu_help))
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        background = surface(MINT, 12)
+        clipToOutline = true
+        setPadding(dp(4), dp(4), dp(4), dp(4))
+    }
+
+    private fun tag(status: String): TextView {
+        val (fill, color) = when {
+            status.startsWith("禁用至") -> COLD to BLUE
+            status in listOf("找不到此 App", "未生效", "未开启", "正在连接") -> WARM to WARNING
+            else -> MINT to TEAL
+        }
+        return copyText(status, 12f, color).apply {
+            background = surface(fill, 20)
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+        }
+    }
+
+    private fun appRow(id: String, label: String, status: String? = null, color: Int = NIGHT_TEXT) = row().apply {
+        addView(iconFor(id), LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(10) })
+        addView(copyText(label, 14f, color, true), LinearLayout.LayoutParams(0, -2, 1f))
+        if (status != null) addView(tag(status), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
+    }
+
+    private fun durations(use: Int, block: Int, textColor: Int = NIGHT_TEXT, inline: Boolean = false) = row().apply {
+        gravity = Gravity.TOP
+        for ((label, minutes, color) in listOf(Triple("刷", use, TEAL), Triple("禁", block, 0xffaf3541.toInt()))) {
+            val chip = if (inline) row() else column()
+            chip.addView(copyText(label, 14f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER
+                background = surface(color, 4)
+            }, LinearLayout.LayoutParams(dp(20), dp(20)).apply {
+                if (inline) marginEnd = dp(5)
+            })
+            chip.addView(copyText("$minutes 分钟", if (inline) 15f else 18f, textColor, true))
+            addView(chip, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+    }
+
+    private fun currentRule() = store.rules.find { it.packageName == targetId }
+    private fun target(id: String?) = targets.find { it.packageName == id }
+
+    private fun ruleStatus(rule: Rule, now: Long): String = when {
+        target(rule.packageName) == null -> "找不到此 App"
+        appState != ServiceState.ON -> "未生效"
+        rule.isBlocked(now) -> "禁用至 " + deadlineLabel(checkNotNull(rule.blockedUntil), now)
+        else -> "可刷"
+    }
+
+    private fun showRule(id: String) {
+        targetId = id
+        go(Page.DETAIL)
+    }
+
+    private fun detail() {
+        val rule = currentRule() ?: return
+        val now = store.now()
+        val missing = target(rule.packageName) == null
+        up()
+        content.addView(heading(rule.label))
+        content.addView(card().apply {
+            addView(row().apply {
+                addView(heading("当前戒律", 17f), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(tag(ruleStatus(rule, now)))
+            })
+            addView(durations(rule.useMinutes, rule.blockMinutes))
+            if (appState != ServiceState.ON && rule.isBlocked(now)) {
+                addView(copyText("服务连接后，禁用至 " + deadlineLabel(checkNotNull(rule.blockedUntil), now)))
+            }
+        })
+        val editWait = rule.editWait(now)
+        val removeWait = rule.removeWait(now)
+        content.addView(button(if (missing) "重新选择心魔" else "修改戒律") {
+            if (missing) openPicker(rule.packageName) else openForm(rule.packageName, rule)
+        }.apply { isEnabled = editWait == 0L; if (!isEnabled) alpha = .55f })
+        if (editWait > 0) content.addView(copyText("再等 ${waitMinutes(editWait)} 分钟可修改。", 14f, NIGHT_MUTED))
+        content.addView(button("移除戒律") { confirmRemove(rule.packageName) }.apply {
+            isEnabled = removeWait == 0L
+            if (isEnabled) setTextColor(NIGHT_ERROR) else alpha = .55f
+        })
+        if (removeWait > 0) content.addView(copyText("再等 ${waitMinutes(removeWait)} 分钟可移除。", 14f, NIGHT_MUTED))
+    }
+
+    private fun confirmRemove(id: String) {
+        val rule = store.rules.find { it.packageName == id } ?: return
+        if (rule.removeWait(store.now()) == 0L) go(Page.REMOVE)
+    }
+
+    private fun removePage() {
+        val rule = currentRule() ?: return
+        content.addView(heading("移除戒律"))
+        content.addView(copyText(if (rule.isBlocked(store.now())) "移除后，此 App 会恢复使用。"
+            else "移除后，此 App 将结束本轮戒律。", 14f, NIGHT_MUTED))
+        footer("移除", secondaryLabel = "取消", secondary = { go(Page.DETAIL) }) {
+            val current = currentRule()
+            if (current != null && current.removeWait(store.now()) == 0L &&
+                store.configure(store.rules.filterNot { it.packageName == current.packageName })
+            ) go(Page.RULES) else toast("移除失败，请重试。")
+        }
+    }
+
+    private fun discardPage() {
+        content.addView(heading("放弃修改？"))
+        content.addView(copyText("尚未保存本次修改。", 14f, NIGHT_MUTED))
+        footer("放弃修改", secondaryLabel = "继续编辑", secondary = { go(Page.FORM) }) {
+            go(if (editing) Page.DETAIL else Page.PICKER)
+        }
+    }
+
+    private fun openPicker(replacing: String? = null) {
+        replacingId = replacing
+        pickerReturn = if (replacing == null) Page.RULES else Page.DETAIL
+        targets = eligibleTargets()
+        query = ""
+        go(Page.PICKER)
+    }
+
+    private fun picker() {
+        up()
+        content.addView(heading(if (replacingId == null) "添加心魔" else "重新选择心魔"))
+        content.addView(copyText("选择一个容易让你刷到停不下来的 App。", 14f, NIGHT_MUTED))
+        val list = column()
+        val search = EditText(this).apply {
+            hint = "搜索心魔"
+            setSingleLine(true)
+            setText(query)
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+        styleInput(search)
+        content.addView(search)
+        content.addView(list)
+        fun matches() {
+            list.removeAllViews()
+            val found = targets.filter { it.label.contains(query.trim(), ignoreCase = true) }
+            if (found.isEmpty()) {
+                list.addView(copyText(if (targets.isEmpty()) "没有可添加的心魔" else "未找到匹配的心魔"))
+                if (query.isNotEmpty()) list.addView(button("清除搜索") { search.setText("") })
+            }
+            val duplicateNames = targets.groupingBy { it.label }.eachCount()
+            found.forEachIndexed { index, app ->
+                if (index > 0) divider(list)
+                val exists = store.rules.any { it.packageName == app.packageName }
+                list.addView(column(3).apply {
+                    setPadding(0, dp(11), 0, dp(11))
+                    isClickable = true
+                    isFocusable = true
+                    addView(appRow(app.packageName, app.label, if (exists) "已添加" else null))
+                    if ((duplicateNames[app.label] ?: 0) > 1) addView(copyText(app.packageName, 13f, NIGHT_MUTED))
+                    setOnClickListener {
+                        if (exists) {
+                            replacingId = null
+                            showRule(app.packageName)
+                        } else openForm(app.packageName)
+                    }
+                })
+            }
+        }
+        search.onText { query = it; matches() }
+        matches()
+    }
+
+    private fun openForm(id: String, existing: Rule? = null) {
+        if (existing != null && existing.editWait(store.now()) > 0) return
+        targetId = id
+        editing = existing != null
+        dirty = false
+        val initial = existing ?: store.rules.find { it.packageName == replacingId }
+        draftUse = (initial?.useMinutes ?: DEFAULT_USE).toString()
+        draftBlock = (initial?.blockMinutes ?: DEFAULT_BLOCK).toString()
+        go(Page.FORM)
+    }
+
+    private fun form() {
+        up()
+        content.addView(heading(if (editing) "修改戒律" else "设置时长"))
+        targetId?.let { content.addView(appRow(it, target(it)?.label ?: currentRule()?.label ?: it)) }
+        val use = numberField("可刷时长（分钟）", draftUse, "1–180 分钟")
+        val block = numberField("禁用时长（分钟）", draftBlock, "15–180 分钟")
+        val preview = copyText("")
+        content.addView(card().apply {
+            addView(preview)
+            if (editing && currentRule()?.isBlocked(store.now()) == true) {
+                addView(copyText("保留本次禁用截止时间，新时长从下一轮生效。", 14f, NIGHT_MUTED))
+            }
+        })
+        val error = copyText("", 14f, NIGHT_ERROR).apply {
+            visibility = View.GONE
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        content.addView(error)
+        fun showPreview() {
+            preview.text = if (draftUse.toIntOrNull() in 1..180 && draftBlock.toIntOrNull() in 15..180)
+                "刷 $draftUse 分钟，禁 $draftBlock 分钟。" else "填写时长后查看戒律预览。"
+        }
+        use.onText { draftUse = it; dirty = true; use.error = null; error.text = ""; error.visibility = View.GONE; showPreview() }
+        block.onText { draftBlock = it; dirty = true; block.error = null; error.text = ""; error.visibility = View.GONE; showPreview() }
+        showPreview()
+        footer("保存戒律") {
+            val u = draftUse.toIntOrNull()
+            val b = draftBlock.toIntOrNull()
+            if (u == null || u !in 1..180) use.error = "输入 1–180 的整数"
+            if (b == null || b !in 15..180) block.error = "输入 15–180 的整数"
+            if (u != null && u in 1..180 && b != null && b in 15..180) {
+                saveRule(u, b, error)
+            }
+        }
+    }
+
+    private fun numberField(label: String, value: String, range: String): EditText {
+        val input = EditText(this).apply {
+            id = View.generateViewId()
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setSingleLine(true)
+            setText(value)
+        }
+        styleInput(input)
+        content.addView(column(5).apply {
+            addView(copyText(label, 14f, bold = true).apply { labelFor = input.id })
+            addView(input)
+            addView(copyText(range, 12f, NIGHT_MUTED))
+        })
+        return input
+    }
+
+    private fun styleInput(view: EditText) {
+        view.backgroundTintList = null
+        view.background = surface(NIGHT_PANEL, 12, NIGHT_LINE)
+        view.minHeight = dp(44)
+        view.setPadding(dp(11), dp(8), dp(11), dp(8))
+        view.textSize = 16f
+        view.setTextColor(NIGHT_TEXT)
+        view.setHintTextColor(NIGHT_MUTED)
+    }
+
+    private fun saveRule(use: Int, block: Int, error: TextView) {
+        val id = targetId ?: return
+        val selected = eligibleTargets().find { it.packageName == id }
+        if (selected == null) {
+            error.visibility = View.VISIBLE
+            error.text = "找不到此 App，请重新选择。"
+            return
+        }
+        val now = store.now()
+        val current = currentRule()
+        val source = store.rules.find { it.packageName == replacingId }
+        if ((editing && current == null) || (!editing && current != null) ||
+            (replacingId != null && (source == null || target(source.packageName) != null))
+        ) {
+            error.visibility = View.VISIBLE
+            error.text = "戒律已变化，请返回后重试。"
+            return
+        }
+        if ((current?.editWait(now) ?: 0L) > 0 || (source?.editWait(now) ?: 0L) > 0) {
+            error.visibility = View.VISIBLE
+            error.text = "同一条戒律每 5 分钟可修改一次。"
+            return
+        }
+        val next = current?.edit(use, block, now)
+            ?: Rule(id, selected.label, use, block, source?.createdAt ?: now,
+                editedAt = now.takeIf { source != null }, blockedFrom = source?.blockedFrom)
+        val result = store.rules.filterNot { it.packageName == id || it.packageName == source?.packageName } + next
+        if (!store.configure(result)) {
+            error.visibility = View.VISIBLE
+            error.text = "保存失败，请重试。"
+            return
+        }
+        replacingId = null
+        dirty = false
+        toast(if (appState == ServiceState.ON) "戒律已保存" else "戒律已保存，尚未生效")
+        go(Page.RULES)
+    }
+
+    private fun settings() {
+        content.addView(heading("设置"))
+        content.addView(column(6).apply {
+            divider(this, NIGHT_LINE)
+            addView(row().apply {
+                addView(heading("无障碍服务", 18f),
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                addView(tag(serviceStatusLabel()))
+            }.apply { setPadding(0, dp(6), 0, 0) })
+            addView(button("打开无障碍设置") { requestPermission() })
+            addView(button("查看开启帮助") { helpOrigin = page; go(Page.HELP) })
+            divider(this, NIGHT_LINE)
+            addView(heading("戒律保护", 18f).apply {
+                setPadding(0, dp(6), 0, 0)
+            })
+            addView(policyText("修改：每条戒律两次修改至少间隔 5 分钟。", "5 分钟"))
+            addView(policyText("移除：创建后要等 1 小时。每次开始禁用时，重新等 1 小时。", "1 小时"))
+        })
+    }
+
+    private fun policyText(text: String, emphasis: String): TextView {
+        val start = text.indexOf(emphasis)
+        val marked = SpannableString(text).apply {
+            setSpan(ForegroundColorSpan(NIGHT_GOLD), start, start + emphasis.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        return copyText(marked, 15f, NIGHT_MUTED)
+    }
+
+    private fun help() {
+        up()
+        content.addView(heading("怎么开启无障碍服务"))
+        content.addView(copyText("1. 打开无障碍设置。\n2. 在「已下载的应用」中找到「斩心魔」，打开开关。\n3. 返回「斩心魔」的设置页，确认「无障碍服务」显示「已连接」。"))
+        content.addView(button("打开无障碍设置", primary = true) { requestPermission() })
+        if (Build.VERSION.SDK_INT >= 33) {
+            content.addView(card().apply {
+                addView(heading("如果系统提示「受限制的设置」", 17f))
+                addView(copyText("打开「斩心魔」的应用信息。若右上角「⋮」菜单里有「允许受限制的设置」，点选并按系统提示确认，再回到上面开启服务。", 14f, NIGHT_MUTED))
+                addView(button("打开应用信息") {
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+                })
+            })
+        }
+    }
+
+    private fun bottomNavigation() {
+        divider(root, NIGHT_LINE)
+        val nav = row().apply { setPadding(dp(10), dp(5), dp(10), dp(5)) }
+        for ((label, destination, icon) in listOf(
+            Triple("戒律", Page.RULES, R.drawable.nav_rules), Triple("设置", Page.SETTINGS, R.drawable.nav_settings),
+        )) {
+            val selected = page == destination
+            val tab = column(2).apply {
+                gravity = Gravity.CENTER
+                isSelected = selected
+                isFocusable = true
+                minimumHeight = dp(44)
+                contentDescription = label
+                val color = if (selected) NIGHT_GOLD else NIGHT_MUTED
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(icon)
+                    imageTintList = ColorStateList.valueOf(color)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(dp(19), dp(19)))
+                addView(copyText(label, 12f, color).apply {
+                    gravity = Gravity.CENTER
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                })
+                setOnClickListener { go(destination) }
+            }
+            nav.addView(tab, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(2); marginEnd = dp(2) })
+        }
+        root.addView(nav)
+    }
+
+    private fun requestPermission() {
+        if (store.consent) {
+            if (!store.activated) awaitingFirstConnection = true
+            openSystemSettings()
+        } else {
+            permissionOrigin = page
+            go(Page.PERMISSION)
+        }
+    }
+
+    private fun openSystemSettings() {
+        runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            .onFailure { toast("请在系统设置中打开无障碍服务。") }
+    }
+
+    private fun back() {
+        when (page) {
+            Page.WELCOME, Page.RULES -> finish()
+            Page.PERMISSION -> go(permissionOrigin)
+            Page.SETTINGS, Page.DETAIL -> go(Page.RULES)
+            Page.REMOVE -> go(Page.DETAIL)
+            Page.DISCARD -> go(Page.FORM)
+            Page.HELP -> go(helpOrigin)
+            Page.PICKER -> {
+                if (replacingId != null) targetId = replacingId
+                replacingId = null
+                go(pickerReturn)
+            }
+            Page.FORM -> {
+                val destination = if (editing) Page.DETAIL else Page.PICKER
+                if (!dirty) go(destination)
+                else go(Page.DISCARD)
+            }
+        }
+    }
+
+    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+    private fun EditText.onText(action: (String) -> Unit) = addTextChangedListener(object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = action(s.toString())
+        override fun afterTextChanged(s: Editable?) = Unit
+    })
 }

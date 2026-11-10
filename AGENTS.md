@@ -1,6 +1,7 @@
 # Goule 工程导航
 
 - 修改产品行为、权限交互、计时或冷冻逻辑前，先读 [Android 首版设计](docs/android-design.md)。
+- 修改页面、导航、权限提示或交互文案前，读 [首版交互设计](docs/interaction-design.md)。
 - 接续工作前，读 [实施计划](docs/implementation-plan.md)，从尚未通过的阶段继续。
 - 提交前运行 `./scripts/check`。涉及前台识别、锁屏、遮罩或权限时，按 [验证手册](docs/verification.md) 记录真机结果。
 
