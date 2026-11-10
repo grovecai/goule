@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Goule 原型</string>
+    <string name="service_name">Goule 冷冻原型</string>
+    <string name="disclosure">Goule 使用无障碍服务识别前台 App 和切换时间，为你选定的一个 App 累计使用时间，用满后显示冷冻遮罩。Goule 不读取窗口内容、输入或截图。目标设置保存在本机。你可以随时在系统设置中关闭服务。</string>
+    <string name="consent_title">开启 Goule 的无障碍服务</string>
+    <string name="consent_open">同意并前往设置</string>
+    <string name="later">稍后</string>
+    <string name="open_settings">打开无障碍设置</string>
+    <string name="choose_target">选择调试目标</string>
+    <string name="clear_target">清除目标</string>
+    <string name="no_targets">请先安装一个普通第三方 App。</string>
+    <string name="target_none">当前未选择可用的目标 App</string>
+    <string name="target_selected">调试目标：%1$s</string>
+    <string name="timing">累计使用 %1$d 秒后冷冻 %2$d 秒。</string>
+    <string name="service_connected">无障碍服务已连接</string>
+    <string name="service_pending">系统开关已开启，等待服务连接</string>
+    <string name="service_disabled">无障碍服务未启用</string>
+    <string name="freeze_title">本轮额度已用完</string>
+    <string name="freeze_until">预计 %1$s 恢复使用</string>
+    <string name="go_home">返回桌面</string>
+    <string name="home_failed">请使用系统导航返回桌面。</string>
+</resources>
