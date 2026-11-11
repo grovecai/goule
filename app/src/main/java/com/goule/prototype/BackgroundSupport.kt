@@ -57,3 +57,9 @@ internal fun Activity.backgroundConfigured(): Boolean = backgroundReady(
     batteryOptimizationIgnored(), backgroundRestricted(),
     prototypeSettings().getBoolean("background_confirmed", false),
 )
+
+internal fun restrictedSettingsHelp(): String = if (Build.MANUFACTURER.equals("oppo", ignoreCase = true)) {
+    "若提示「受限制的设置」：\n1. 打开应用信息。\n2. 进入「权限管理」。\n3. 在右上角菜单中选择「允许受限制的设置」，按系统提示确认。\n4. 返回无障碍设置，开启「斩心魔」服务。\nColorOS 不同版本的入口可能不同，请以手机实际显示为准。"
+} else {
+    "若提示「受限制的设置」，打开应用信息，在右上角菜单中选择「允许受限制的设置」。部分系统需先进入「权限管理」。确认后返回无障碍设置开启服务。"
+}

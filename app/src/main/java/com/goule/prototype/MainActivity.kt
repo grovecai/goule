@@ -388,7 +388,7 @@ class MainActivity : Activity() {
             render(keepScroll = true)
         })
         if (showSetupHelp) {
-            content.addView(copyText("若提示「受限制的设置」，打开应用信息，在右上角菜单中允许受限制的设置，再返回开启服务。服务一直未连接时，可在系统中关闭后重新开启。", 14f, NIGHT_MUTED))
+            content.addView(copyText(restrictedSettingsHelp(), 14f, NIGHT_MUTED))
             content.addView(button("打开应用信息", soft = true) {
                 if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
             })
