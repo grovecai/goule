@@ -252,3 +252,5 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 后台完成状态与门禁按用户要求移除，不读取系统电池/限制状态或用户确认记录。源码复核：设置页后台条目无状态标签；后台页仅两组说明和入口，无确认、重置或折叠；setupMissing 仅依赖无障碍连接，故后台设置不影响添加及继续。删除已废弃 BackgroundReadiness 及对应测试，原有规则/计时等单元测试继续由 `./scripts/check` 执行。
 
 `./scripts/check`（仓库检查、单元测试、Lint、Debug 构建）通过。当前检测到 OPPO PLJ110（既有记录 Android 16 / ColorOS 16.1.0），本轮未安装、未修改设备设置，不能将源码复核作为真机通过。待测：首次无障碍授权后不操作后台即可继续；两个系统入口往返后无确认状态；已有戒律添加不因后台设置受阻；无障碍未连接仍拦截添加。
+
+2026-11-11 安装核对：OPPO PLJ110（Android 16、ColorOS 16.1.0）成功覆盖安装 63d36ac 的可选后台指引 Release 构建，沿用既有签名及 0.3.3/versionCode 6。assembleRelease、签名校验、ZIP 对齐通过；设备 base.apk SHA-256 与本地签名包完全一致，启动成功，FreezeService 在 Enabled services 列表。未卸载或清除数据，本轮未复测页面交互或全新安装流程。
