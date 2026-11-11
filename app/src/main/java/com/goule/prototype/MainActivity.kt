@@ -273,7 +273,7 @@ class MainActivity : Activity() {
         val fillDrawable = if (primary) GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
             intArrayOf(0xffffe386.toInt(), 0xffffbc3d.toInt())).apply {
             cornerRadius = dp(radius).toFloat()
-        } else surface(fill, radius)
+        } else surface(fill, radius, if (soft) NIGHT_LINE else null)
         background = RippleDrawable(ColorStateList.valueOf(if (primary) 0x22000000 else 0x22ffffff),
             fillDrawable, surface(Color.WHITE, radius))
         if (primary) {
@@ -407,7 +407,7 @@ class MainActivity : Activity() {
             addView(button(if (connecting) "检查服务" else "去开启") { requestPermission() }.apply {
                 setTextColor(WARNING)
             })
-            addView(button("查看开启帮助") { helpOrigin = page; go(Page.HELP) }.apply { setTextColor(WARNING) })
+            addView(button("查看开启帮助", soft = true) { helpOrigin = page; go(Page.HELP) }.apply { setTextColor(WARNING) })
         })
         if (store.rules.isEmpty()) {
             content.addView(column(8).apply {
@@ -722,8 +722,9 @@ class MainActivity : Activity() {
                     LinearLayout.LayoutParams(0, -2, 1f))
                 addView(tag(serviceStatusLabel()))
             }.apply { setPadding(0, dp(6), 0, 0) })
-            addView(button("打开无障碍设置") { requestPermission() })
-            addView(button("查看开启帮助") { helpOrigin = page; go(Page.HELP) })
+            addView(copyText("识别目标 App、累计使用时间，并在用满后显示禁用页。", 14f, NIGHT_MUTED))
+            addView(button("打开无障碍设置", primary = true) { requestPermission() })
+            addView(button("查看开启帮助", soft = true) { helpOrigin = page; go(Page.HELP) })
             divider(this, NIGHT_LINE)
             addView(heading("允许后台运行", 18f))
             addView(copyText("请务必完成后台运行设置。系统清理后台时可能关闭无障碍服务，导致计时和禁用中断。OPPO 请在耗电管理中选择「完全允许后台行为」。", 14f, NIGHT_MUTED))
@@ -743,7 +744,7 @@ class MainActivity : Activity() {
         content.addView(heading(profile.title))
         content.addView(copyText("第 2 步 · 允许后台运行，帮助戒律在划掉最近任务后持续执行。请按下面的指引完成系统设置。", 14f, NIGHT_MUTED))
         if (appState != ServiceState.ON) {
-            content.addView(button("开启无障碍服务") {
+            content.addView(button("开启无障碍服务", soft = true) {
                 permissionOrigin = Page.BACKGROUND
                 go(Page.PERMISSION)
             })
@@ -752,11 +753,11 @@ class MainActivity : Activity() {
         content.addView(copyText(if (batteryOptimizationIgnored())
             "系统电池优化已豁免。厂商后台管理仍需单独检查。"
         else "系统电池优化未豁免。可在电池优化列表中找到「斩心魔」，按需选择不优化。"))
-        content.addView(button("打开电池优化设置") {
+        content.addView(button("打开电池优化设置", soft = true) {
             if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
         })
         content.addView(copyText(profile.instructions))
-        content.addView(button("打开应用信息") {
+        content.addView(button("打开应用信息", soft = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
         content.addView(copyText("完成设置后，返回这里确认无障碍服务已连接，再尝试划掉最近任务并打开受限 App 检查禁用。强行停止应用后，需要重新打开应用并检查无障碍服务。", 14f, NIGHT_MUTED))
@@ -783,7 +784,7 @@ class MainActivity : Activity() {
             content.addView(card().apply {
                 addView(heading("如果系统提示「受限制的设置」", 17f))
                 addView(copyText("打开「斩心魔」的应用信息。若右上角「⋮」菜单里有「允许受限制的设置」，点选并按系统提示确认，再回到上面开启服务。", 14f, NIGHT_MUTED))
-                addView(button("打开应用信息") {
+                addView(button("打开应用信息", soft = true) {
                     startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
                 })
             })
