@@ -810,10 +810,15 @@ class MainActivity : Activity() {
             content.addView(button("打开电池优化列表", soft = true) {
                 if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
             })
-            content.addView(button("撤销后台设置确认", soft = true) {
-                prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
-                render(keepScroll = true)
-            })
+            if (!batteryOptimizationIgnored() &&
+                prototypeSettings().getBoolean("background_confirmed", false)
+            ) {
+                content.addView(button("重新核对后台设置", soft = true) {
+                    prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
+                    toast("已清除手动确认，请重新核对系统设置")
+                    render(keepScroll = true)
+                })
+            }
         }
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
             if (setupMissing().isNotEmpty()) {
