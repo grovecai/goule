@@ -317,7 +317,12 @@ class MainActivity : Activity() {
         secondary: (() -> Unit)? = null, action: () -> Unit,
     ) {
         val group = column(4)
-        group.addView(button(label, primary = true, action = action))
+        group.addView(button(label, primary = true, action = action).apply {
+            if (page == Page.WELCOME) {
+                typeface = resources.getFont(R.font.welcome_kai)
+                paint.isFakeBoldText = true
+            }
+        })
         if (secondaryLabel != null && secondary != null) {
             group.addView(button(secondaryLabel, soft = true, action = secondary))
         }
@@ -337,11 +342,15 @@ class MainActivity : Activity() {
         content.setPadding(dp(19), dp(if (short) 22 else 48), dp(19), dp(18))
         content.addView(copyText(colorTitle, 34f, NIGHT_TEXT, true).apply {
             isAccessibilityHeading = true
-            setLineSpacing(0f, 1f)
-            letterSpacing = -.06f
+            typeface = resources.getFont(R.font.welcome_brush)
+            paint.isFakeBoldText = false
+            setLineSpacing(0f, 1.06f)
+            letterSpacing = 0f
         })
         content.addView(Space(this), LinearLayout.LayoutParams(-1, dp(if (short) 110 else 150), 1f))
-        content.addView(copyText("你清醒时立下戒律\n心魔上头时，替你斩断刷屏循环", 16f, NIGHT_TEXT, true))
+        content.addView(copyText("你清醒时立下戒律\n心魔上头时，替你斩断刷屏循环", 16f, NIGHT_TEXT).apply {
+            typeface = resources.getFont(R.font.welcome_kai)
+        })
         val example = card(fill = 0xfffff3da.toInt(), border = null).apply {
             setPadding(dp(13), dp(8), dp(13), dp(8))
             addView(row().apply {
