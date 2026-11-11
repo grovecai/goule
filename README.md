@@ -10,7 +10,7 @@
 
 斩心魔是一款帮你打断刷屏循环的 Android 工具。你可以为容易刷过头的 App 单独设定可用时长和休息时长。额度用完后，禁用页会拦住继续滑动的动作。休息结束后，要不要再打开，由你决定。
 
-**[下载斩心魔 v0.3.2 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.2/goule-v0.3.2.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.2)
+**[下载斩心魔 v0.3.3 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.3/goule-v0.3.3.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.3)
 
 ## 一条戒律怎么生效
 
@@ -41,7 +41,7 @@
 
 ## 当前版本
 
-v0.3.2 是预发布版。本轮调试构建与独立测试包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）验证后台适配和两步配置引导，v0.3.2 签名发布包已在该设备覆盖安装并验证后台配置可继续。 [真机验证记录](docs/verification.md#v032-发布包验证)
+v0.3.3 是预发布版。本轮调试构建与独立测试包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）验证后台适配和两步配置引导，v0.3.3 签名发布包已在该设备覆盖安装并验证后台配置可继续。 [真机验证记录](docs/verification.md#v033-发布包验证)
 
 ## 开发与验证
 
