@@ -246,3 +246,9 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 `./scripts/check`（单元测试、Lint、Debug 构建）通过。ADB 检测到 OPPO PLJ110；本轮未覆盖安装或变更手机后台设置。Android 16 / ColorOS 16.1.0 上待验证：升级后旧确认失效、电池豁免下待确认与门禁、智能优化/完全允许两选项核对、返回后的确认重置、明确受限拦截。未发布新版本。
 
 2026-11-11，OPPO PLJ110（Android 16、ColorOS 16.1.0），源码 aa5e008 修复构建使用既有 Release 签名覆盖安装成功，无卸载或清数据。版本仍为 0.3.3/versionCode 6，未更新 GitHub Release。assembleRelease、签名与 ZIP 对齐通过；手机安装 base.apk 的 SHA-256 与本地签名 APK 一致，启动成功，FreezeService 仍在 Enabled services 中。本轮仅验证安装和启动，未代用户确认完全允许后台行为，也未将后台配置交互记为已通过。
+
+## 可选后台指引验证（2026-11-11）
+
+后台完成状态与门禁按用户要求移除，不读取系统电池/限制状态或用户确认记录。源码复核：设置页后台条目无状态标签；后台页仅两组说明和入口，无确认、重置或折叠；setupMissing 仅依赖无障碍连接，故后台设置不影响添加及继续。删除已废弃 BackgroundReadiness 及对应测试，原有规则/计时等单元测试继续由 `./scripts/check` 执行。
+
+`./scripts/check`（仓库检查、单元测试、Lint、Debug 构建）通过。当前检测到 OPPO PLJ110（既有记录 Android 16 / ColorOS 16.1.0），本轮未安装、未修改设备设置，不能将源码复核作为真机通过。待测：首次无障碍授权后不操作后台即可继续；两个系统入口往返后无确认状态；已有戒律添加不因后台设置受阻；无障碍未连接仍拦截添加。

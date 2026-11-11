@@ -52,10 +52,6 @@ Google Play 版本应准确披露无障碍用途，提供单独的应用内显�
 
 无障碍服务由系统绑定，显式设置 `stopWithTask=false`，任务移除回调保存已有进度，保持服务会话。重连沿用已提交的规则时钟，等待新前台事件。后台设置使用公开 Android 应用信息和电池优化入口，启动失败逐级回退。厂商差异集中在 `BackgroundSupport.kt` 的配置入口，当前接入 OPPO 指引，其他设备使用通用指引。电池优化豁免不等同于服务连接或厂商后台权限已开启。
 
-配置完成条件为服务已连接、系统电池优化豁免及用户确认厂商后台设置。该条件用于配置与添加入口引导，不改变各 App 的计时和禁用状态转换。厂商确认本机保存，重新检查可撤销，不推断厂商开关实时状态。
+后台设置仅为可选稳定性指引，不读取或展示完成状态，不保存用户确认，不参与首次继续、添加心魔与戒律缺项门禁。无障碍服务连接仍为必要条件。旧后台确认记录不再使用。此约定覆盖此前后台必配和自动/手动完成判定。
 
-OPPO 后台配置采用 `PowerManager.isIgnoringBatteryOptimizations` 与 `ActivityManager.isBackgroundRestricted` 组合检测，对应 PLJ110 已观察到的 ColorOS 后台设置映射。其他厂商在取得验证前仍保留用户确认。系统状态不代表自启动、任务锁定等所有厂商开关，跨型号映射需要补充实测。
-
-0.3.1 修正后台检测：厂商后台开关与 Android 电池优化豁免不保证同步。无系统明确后台限制时，系统豁免或用户核对确认任一满足即可完成配置；明确受限时仍阻止继续。此约定覆盖此前 OPPO 自动映射假设。
-
-2026-11-11 再次修正：用户反馈电池豁免、系统未受限同时成立时，OPPO 仍可能处于智能优化。因此电池豁免只作独立诊断，不能作为后台配置完成证据。未检测到系统限制且用户明确核对厂商选项才允许继续；状态标为用户已确认，不代表实时读取。新确认键不继承旧记录，再次通过 App 打开后台系统设置会清除确认。此约定覆盖此前自动通过与豁免/确认二选一逻辑。公开接口范围参考 [PowerManager](https://developer.android.com/reference/android/os/PowerManager#isIgnoringBatteryOptimizations(java.lang.String)) 与 [ActivityManager](https://developer.android.com/reference/android/app/ActivityManager#isBackgroundRestricted())。
+耗电管理的具体选项由厂商提供；OPPO 指引使用实测的「应用信息 → 耗电管理 → 完全允许后台行为」，其他厂商走通用说明，可在 BackgroundProfile 扩展。电池优化是 Android 通用机制，使用公开列表入口，各系统界面名称和整合方式可能不同。参考 [Android PowerManager](https://developer.android.com/reference/android/os/PowerManager)。

@@ -43,7 +43,6 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private var onboarding = false
     private var showSetupHelp = false
-    private var showBackgroundExtras = false
     private var page = Page.WELCOME
     private var permissionOrigin = Page.WELCOME
     private var helpOrigin = Page.RULES
@@ -161,18 +160,11 @@ class MainActivity : Activity() {
         ) render(keepScroll = true)
     }
 
-    private fun backgroundStatus(): String = when {
-        backgroundRestricted() -> "受限制"
-        backgroundConfigured() -> "用户已确认"
-        else -> "待确认"
-    }
-
     private fun setupMissing(): List<String> = buildList {
         if (appState != ServiceState.ON) add("无障碍服务${serviceStatusLabel()}")
-        if (!backgroundConfigured()) add("允许后台运行${backgroundStatus()}")
     }
 
-    private fun setupStatus() = "无障碍服务 · ${serviceStatusLabel()}\n允许后台运行 · ${backgroundStatus()}"
+    private fun setupStatus() = "无障碍服务 · ${serviceStatusLabel()}"
 
     private fun serviceStatusLabel() = when (appState) {
         ServiceState.ON -> "已设置"
@@ -184,7 +176,7 @@ class MainActivity : Activity() {
         val now = store.now()
         return when (page) {
             Page.RULES -> store.rules.map { ruleStatus(it, now) } + setupStatus()
-            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus(), batteryOptimizationIgnored().toString(), backgroundRestricted().toString())
+            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
             }.orEmpty()
@@ -365,13 +357,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun guideHeader(title: String, status: String, purpose: String) {
+    private fun guideHeader(title: String, status: String?, purpose: String) {
         up()
         content.addView(heading(title))
         if (onboarding) content.addView(copyText(
             if (page == Page.PERMISSION) "第 1 步，共 2 步" else "第 2 步，共 2 步", 14f, NIGHT_MUTED,
         ))
-        content.addView(tag(status))
+        if (status != null) content.addView(tag(status))
         content.addView(copyText(purpose, 14f, NIGHT_MUTED))
     }
 
@@ -434,7 +426,7 @@ class MainActivity : Activity() {
             addView(copyText(setupMissing().joinToString("\n"), 14f, NIGHT_TEXT))
             addView(button("完成必要设置", primary = true) {
                 permissionOrigin = Page.RULES
-                go(if (appState == ServiceState.ON) Page.BACKGROUND else Page.PERMISSION)
+                go(Page.PERMISSION)
             })
         })
         if (store.rules.isEmpty()) {
@@ -581,7 +573,7 @@ class MainActivity : Activity() {
     private fun openPicker(replacing: String? = null) {
         if (setupMissing().isNotEmpty()) {
             permissionOrigin = page
-            go(if (appState == ServiceState.ON) Page.BACKGROUND else Page.PERMISSION)
+            go(Page.PERMISSION)
             return
         }
 
@@ -758,16 +750,15 @@ class MainActivity : Activity() {
                 }
             }
         })
-        if (setupMissing().isEmpty()) content.addView(copyText("无障碍已设置，后台设置已由你确认", 14f, NIGHT_MUTED))
         content.addView(column(8).apply {
             for ((title, status, destination) in listOf(
                 Triple("无障碍服务", serviceStatusLabel(), Page.PERMISSION),
-                Triple("允许后台运行", backgroundStatus(), Page.BACKGROUND),
+                Triple("允许后台运行", null, Page.BACKGROUND),
             )) {
                 divider(this, NIGHT_LINE)
                 addView(row().apply {
                     addView(heading(title, 18f), LinearLayout.LayoutParams(0, -2, 1f))
-                    addView(tag(status))
+                    if (status != null) addView(tag(status))
                 })
                 addView(button("去设置", primary = true) {
                     permissionOrigin = Page.SETTINGS
@@ -785,55 +776,22 @@ class MainActivity : Activity() {
 
     private fun backgroundSettings() {
         val profile = backgroundProfile()
-        guideHeader("允许后台运行", backgroundStatus(), "减少系统清理导致的计时和禁用中断。")
-        content.addView(copyText(profile.instructions))
-        content.addView(button("打开系统设置", primary = true) {
+        guideHeader("允许后台运行", null, "建议按需设置，减少系统清理导致的计时和禁用中断。也可直接继续。")
+        content.addView(heading("1. ${profile.title}", 18f))
+        content.addView(copyText(profile.instructions, 15f))
+        content.addView(button("打开应用信息", soft = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(copyText("无法自动读取厂商后台选项，请按上方步骤核对。用户确认仅记录本次核对；以后在系统中修改此项，请回来重新核对。", 14f, NIGHT_MUTED))
-        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n系统后台限制 · ${if (backgroundRestricted()) "受限制" else "未检测到限制"}\n以上检测结果不代表厂商已完全允许后台运行。", 14f, NIGHT_MUTED))
-        if (!prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
-            content.addView(button(profile.confirmation, soft = true) {
-                if (backgroundRestricted()) {
-                    toast("系统仍限制后台运行，请先解除限制")
-                    return@button
-                }
-                prototypeSettings().edit().putBoolean(BACKGROUND_CONFIRMATION_KEY, true).apply()
-                render(keepScroll = true)
-            }.apply {
-                isEnabled = !backgroundRestricted()
-                alpha = if (isEnabled) 1f else .45f
-            })
-        }
-        if (prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
-            content.addView(copyText("厂商后台设置 · 用户已确认", 14f, NIGHT_MUTED))
-        }
-        content.addView(button("更多稳定性设置", soft = true) {
-            showBackgroundExtras = !showBackgroundExtras
-            render(keepScroll = true)
+        content.addView(heading("2. 电池优化", 18f))
+        content.addView(copyText("在列表中找到「斩心魔」，选择「不优化」或「不允许优化」。若未显示，可先切换到「所有应用」。", 15f))
+        content.addView(copyText("这是 Android 通用机制，各品牌的入口和名称可能不同，也可能合并在应用电池设置中；没有此选项可略过。", 14f, NIGHT_MUTED))
+        content.addView(button("打开电池优化列表", soft = true) {
+            if (!openBackgroundSettings(battery = true)) toast("请手动在系统设置中查找电池优化")
         })
-        if (showBackgroundExtras) {
-            content.addView(copyText("如果手机提供自启动管理，可允许「斩心魔」自启动；也可在最近任务中锁定卡片。这些选项按系统实际提供的功能设置。", 14f, NIGHT_MUTED))
-            content.addView(button("打开电池优化列表", soft = true) {
-                if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
-            })
-            if (prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
-                content.addView(button("重新核对后台设置", soft = true) {
-                    prototypeSettings().edit().remove(BACKGROUND_CONFIRMATION_KEY).apply()
-                    toast("已清除手动确认，请重新核对系统设置")
-                    render(keepScroll = true)
-                })
-            }
-        }
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
-            if (setupMissing().isNotEmpty()) {
-                if (appState != ServiceState.ON) {
-                    permissionOrigin = Page.BACKGROUND
-                    go(Page.PERMISSION)
-                    return@button
-                }
-                toast("请先完成后台运行设置")
-                render(keepScroll = true)
+            if (appState != ServiceState.ON) {
+                permissionOrigin = Page.BACKGROUND
+                go(Page.PERMISSION)
                 return@button
             }
             store.welcome()
