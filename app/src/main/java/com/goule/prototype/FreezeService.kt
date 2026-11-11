@@ -127,6 +127,13 @@ class FreezeService : AccessibilityService() {
         if (target != null && overlay != null) recents.targetResumed(event.eventTime) else recents.reset()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Removing the UI task must preserve the system-bound accessibility session.
+        reconcile(foreground)
+        store.flush()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onInterrupt() = clearForeground()
     override fun onUnbind(intent: Intent): Boolean {
         disconnect()

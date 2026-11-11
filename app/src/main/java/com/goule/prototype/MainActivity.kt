@@ -36,7 +36,7 @@ import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
-    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP }
+    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND }
     private enum class ServiceState { OFF, CONNECTING, ON, PAUSED }
 
     private val store by lazy { RuleStore.get(this) }
@@ -153,7 +153,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER) &&
+        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND) &&
             (targetsChanged || previous != appState || visibleSignature != signature())
         ) render(keepScroll = true)
     }
@@ -168,6 +168,7 @@ class MainActivity : Activity() {
         val now = store.now()
         return when (page) {
             Page.RULES -> store.rules.map { ruleStatus(it, now) }
+            Page.BACKGROUND -> listOf(batteryOptimizationIgnored().toString())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
             }.orEmpty()
@@ -226,6 +227,7 @@ class MainActivity : Activity() {
             Page.REMOVE -> removePage()
             Page.DISCARD -> discardPage()
             Page.HELP -> help()
+            Page.BACKGROUND -> backgroundSettings()
         }
         if (page == Page.RULES || page == Page.SETTINGS) bottomNavigation()
         visibleSignature = signature()
@@ -720,12 +722,32 @@ class MainActivity : Activity() {
             addView(button("打开无障碍设置") { requestPermission() })
             addView(button("查看开启帮助") { helpOrigin = page; go(Page.HELP) })
             divider(this, NIGHT_LINE)
+            addView(button("后台运行设置") { go(Page.BACKGROUND) })
+            divider(this, NIGHT_LINE)
             addView(heading("戒律保护", 18f).apply {
                 setPadding(0, dp(6), 0, 0)
             })
             addView(policyText("修改：每条戒律两次修改至少间隔 5 分钟。", "5 分钟"))
             addView(policyText("移除：创建后要等 1 小时。每次开始禁用时，重新等 1 小时。", "1 小时"))
         })
+    }
+
+    private fun backgroundSettings() {
+        up()
+        val profile = backgroundProfile()
+        content.addView(heading(profile.title))
+        content.addView(copyText("无障碍服务${serviceStatusLabel()}。执行戒律需要服务保持连接。"))
+        content.addView(copyText(if (batteryOptimizationIgnored())
+            "系统电池优化已豁免。厂商后台管理仍需单独检查。"
+        else "系统电池优化未豁免。可在电池优化列表中找到「斩心魔」，按需选择不优化。"))
+        content.addView(button("打开电池优化设置") {
+            if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
+        })
+        content.addView(copyText(profile.instructions))
+        content.addView(button("打开应用信息") {
+            if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
+        })
+        content.addView(copyText("完成设置后，返回这里确认无障碍服务已连接，再尝试划掉最近任务并打开受限 App 检查禁用。强行停止应用后，需要重新打开应用并检查无障碍服务。", 14f, NIGHT_MUTED))
     }
 
     private fun policyText(text: String, emphasis: String): TextView {
@@ -805,6 +827,7 @@ class MainActivity : Activity() {
             Page.REMOVE -> go(Page.DETAIL)
             Page.DISCARD -> go(Page.FORM)
             Page.HELP -> go(helpOrigin)
+            Page.BACKGROUND -> go(Page.SETTINGS)
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null
