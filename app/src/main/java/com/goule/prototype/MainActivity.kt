@@ -344,8 +344,6 @@ class MainActivity : Activity() {
             })
         }
         content.addView(example)
-        content.addView(copyText("首次使用需开启无障碍服务，并设置允许后台运行。", 14f, NIGHT_MUTED))
-        content.addView(copyText(setupStatus(), 13f, NIGHT_MUTED))
         footer("立下第一条戒律") {
             permissionOrigin = Page.WELCOME
             go(Page.PERMISSION)
