@@ -169,8 +169,11 @@ class MainActivity : Activity() {
     private fun serviceStatusLabel() = when (appState) {
         ServiceState.ON -> "已设置"
         ServiceState.CONNECTING -> "正在连接"
-        ServiceState.PAUSED, ServiceState.OFF -> "未设置"
+        ServiceState.PAUSED -> "已关闭"
+        ServiceState.OFF -> "未设置"
     }
+
+    private val servicePausedMessage = "无障碍服务已关闭，计时和禁用已暂停。原有戒律仍保留，重新开启后会继续执行仍有效的禁用。"
 
     private fun signature(): List<String> {
         val now = store.now()
@@ -368,10 +371,18 @@ class MainActivity : Activity() {
     }
 
     private fun permission() {
-        guideHeader("无障碍服务", serviceStatusLabel(), "识别目标 App、累计使用时间，并在用满后显示禁用页。")
+        val recovering = appState == ServiceState.PAUSED
+        guideHeader("无障碍服务", serviceStatusLabel(), if (recovering) servicePausedMessage
+            else "识别目标 App、累计使用时间，并在用满后显示禁用页。")
+        if (recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
         content.addView(copyText("1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，确认状态为「已设置」。"))
         content.addView(copyText(getString(R.string.disclosure), 14f, NIGHT_MUTED))
-        content.addView(button(if (store.consent) "打开系统设置" else "同意并打开系统设置", primary = true) {
+        val settingsAction = when {
+            recovering -> "重新开启无障碍"
+            store.consent -> "打开系统设置"
+            else -> "同意并打开系统设置"
+        }
+        content.addView(button(settingsAction, primary = true) {
             store.approve()
             openSystemSettings()
         })
@@ -380,6 +391,7 @@ class MainActivity : Activity() {
             render(keepScroll = true)
         })
         if (showSetupHelp) {
+            if (!recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
             content.addView(copyText(restrictedSettingsHelp(), 14f, NIGHT_MUTED))
             content.addView(button("打开应用信息", soft = true) {
                 if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
@@ -422,9 +434,10 @@ class MainActivity : Activity() {
             })
         }
         if (setupMissing().isNotEmpty()) content.addView(card(3).apply {
-            addView(copyText("配置未完成", 15f, NIGHT_GOLD, true))
-            addView(copyText(setupMissing().joinToString("\n"), 14f, NIGHT_TEXT))
-            addView(button("完成必要设置", primary = true) {
+            val recovering = appState == ServiceState.PAUSED
+            addView(copyText(if (recovering) "戒律已暂停" else "配置未完成", 15f, NIGHT_GOLD, true))
+            addView(copyText(if (recovering) servicePausedMessage else setupMissing().joinToString("\n"), 14f, NIGHT_TEXT))
+            addView(button(if (recovering) "重新开启无障碍" else "完成必要设置", primary = true) {
                 permissionOrigin = Page.RULES
                 go(Page.PERMISSION)
             })
@@ -470,7 +483,7 @@ class MainActivity : Activity() {
     private fun tag(status: String): TextView {
         val (fill, color) = when {
             status.startsWith("禁用至") -> COLD to BLUE
-            status in listOf("找不到此 App", "未生效", "未开启", "未设置", "正在连接", "待确认", "受限制") -> WARM to WARNING
+            status in listOf("找不到此 App", "未生效", "未开启", "未设置", "已关闭", "正在连接", "待确认", "受限制") -> WARM to WARNING
             else -> MINT to TEAL
         }
         return copyText(status, 12f, color).apply {
@@ -760,7 +773,9 @@ class MainActivity : Activity() {
                     addView(heading(title, 18f), LinearLayout.LayoutParams(0, -2, 1f))
                     if (status != null) addView(tag(status))
                 })
-                addView(button("去设置", primary = true) {
+                val recovering = destination == Page.PERMISSION && appState == ServiceState.PAUSED
+                if (recovering) addView(copyText(servicePausedMessage, 14f, NIGHT_MUTED))
+                addView(button(if (recovering) "重新开启无障碍" else "去设置", primary = true) {
                     permissionOrigin = Page.SETTINGS
                     go(destination)
                 })

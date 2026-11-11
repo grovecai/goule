@@ -49,3 +49,11 @@ internal fun restrictedSettingsHelp(): String = if (Build.MANUFACTURER.equals("o
 } else {
     "若提示「受限制的设置」，打开应用信息，在右上角菜单中选择「允许受限制的设置」。部分系统需先进入「权限管理」。确认后返回无障碍设置开启服务。"
 }
+
+/** Explain recovery without claiming that an app can restore a revoked system grant. */
+internal fun accessibilityRecoveryHelp(manufacturer: String = Build.MANUFACTURER): String =
+    when (manufacturer.lowercase(java.util.Locale.ROOT)) {
+        "oppo" -> "部分 ColorOS 会在重启后关闭通过安装包安装的应用的无障碍服务，即使已允许后台运行。" +
+            "请在系统设置中重新开启；若随后出现安全提醒，请核对后选择「保持开启」。斩心魔无法自动恢复这项授权。"
+        else -> "若重启或系统清理后服务被关闭，请在系统设置中重新开启。斩心魔无法自动恢复这项授权。"
+    }

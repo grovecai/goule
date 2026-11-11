@@ -258,3 +258,9 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 `./scripts/check`（仓库检查、单元测试、Lint、Debug 构建）通过。当前检测到 OPPO PLJ110（既有记录 Android 16 / ColorOS 16.1.0），本轮未安装、未修改设备设置，不能将源码复核作为真机通过。待测：首次无障碍授权后不操作后台即可继续；两个系统入口往返后无确认状态；已有戒律添加不因后台设置受阻；无障碍未连接仍拦截添加。
 
 2026-11-11 安装核对：OPPO PLJ110（Android 16、ColorOS 16.1.0）成功覆盖安装 63d36ac 的可选后台指引 Release 构建，沿用既有签名及 0.3.3/versionCode 6。assembleRelease、签名校验、ZIP 对齐通过；设备 base.apk SHA-256 与本地签名包完全一致，启动成功，FreezeService 在 Enabled services 列表。未卸载或清除数据，本轮未复测页面交互或全新安装流程。
+
+### OPPO F02 定位与恢复提示
+
+2026-11-11，OPPO PLJ110，Android 16、ColorOS 16.1.0，正式 0.3.3/code 6。原版本重启对照（bootCount 7 → 8）确认首次解锁前授权仍在，服务进程启动后由 `OplusRiskAccessibilityController` 以 `sideload_app` 原因撤权；无应用崩溃。已确认完全允许后台行为和二次保持开启，仍不能避免撤权。详细时间线见 [F02 根因复核](oppo-regression-2026-11-11.md#f02-根因复核2026-11-11bootcount-7--8)。
+
+用户选择完善恢复交互，未采用自动重授权方案。新构建沿用发布签名覆盖安装，无卸载、无清除正式数据，版本仍 0.3.3/code 6，未发布 GitHub Release。设备检查覆盖服务关闭后的首页「戒律已暂停」、设置/权限页「已关闭」、暖色状态和重新开启入口，权限页包含 OPPO 撤权及二次提醒说明。实际走通权限页 → 系统开启 → 返回，完成延迟的保持开启确认后，首页暂停提示清除，设置页截图为已设置，Bound services 中确认斩心魔绑定。安装包 SHA-256 与本地一致（56392500df60fa0f4a343e1237d93f1c980f8129850aa833611a3f255ced0101）。`./scripts/check`、Release 构建和签名校验通过。uiautomator 采集时暂时正在连接，以采集结束后的截图及绑定核对为准；本轮不重复完整首次流程、计时引擎或其他品牌测试。

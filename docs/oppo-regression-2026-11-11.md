@@ -64,3 +64,18 @@ A 规则实际用满 60000 ms，截止时间 1794403891834。普通来电从响�
 本轮未改产品代码，仅补充测试记录。正式包未卸载、未清除数据，未发布新版本。所有独立测试包已移除，正式服务在系统启用列表与 Bound services 中均确认，手机停留正式版首页。`./scripts/check` 通过（仓库检查、Lint、单元测试、Debug 构建）。
 
 优先修复 F01 来电返回漏拦截，再定位 F02 重启关闭服务的原因与可恢复边界，修正 F03 首次引导恢复。默认智能优化划掉任务会中断的实测限制应继续明确告知。修复后重复对应真机用例；过夜待机、受限设置实际触发及其他品牌另行验证，不能以本轮结果替代。
+
+## F02 根因复核（2026-11-11，bootCount 7 → 8）
+
+使用未改产品代码的正式 0.3.3/code 6 复现。重启前完成 ColorOS 延迟弹出的「保持开启」二次确认，截图核对「完全允许后台行为」已选中；启用列表和 Bound services 均有斩心魔，Crashed services 为空。本轮重启与解锁观测没有运行 uiautomator。
+
+- 首次解锁前，启用列表仍有 `com.goule.prototype/com.goule.prototype.FreezeService`，服务因尚未解锁暂未绑定。
+- 21:59:08 系统开始绑定，21:59:08.968 启动斩心魔进程。
+- 21:59:11.396，系统日志 `OplusRiskAccessibilityController` 明确记录：`disabled accessibility for app: com.goule.prototype/com.goule.prototype.FreezeService, reason: sideload_app`。
+- 随后启用列表清空，服务断开，Crashed services 仍为空。用户确认解锁后再次核对相同结果。
+
+因此本机 F02 已定位为 ColorOS 对侧载应用的重启撤权策略，不是规则存储丢失或应用启动崩溃。「完全允许后台行为」和二次保持开启不能阻止本次撤权。应用信息与权限管理实机检查没有可见的受限设置豁免菜单；不以其他安装方式或其他 ROM 的经验推断本机可绕过。
+
+Android 的无障碍服务由系统管理并由用户在设置中开启，参见 [AccessibilityService 生命周期](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService#lifecycle)。单纯增加开机接收器、提前启动进程或 Direct Boot 标记，不能据此声称修复系统主动撤权。当前尚无应用内自动恢复方案通过验证；后续提示与恢复入口只能减少手动恢复成本，不应标为自动恢复修复。
+
+经用户选择，后续构建已补充服务已关闭/戒律已暂停提示与重新开启指引，OPPO 实机往返恢复及提示清除通过。该改善不消除 ColorOS 重启撤权，F02 的自动恢复验收仍失败。正式版已恢复绑定并保留数据，见验证手册最新记录。
