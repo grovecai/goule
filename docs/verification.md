@@ -244,3 +244,5 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 纯 Kotlin 回归覆盖：无系统限制但未确认不能继续；明确核对且无系统限制可以继续（不依赖电池豁免）；系统明确限制时无论确认与否均拦截。测试由 `./scripts/check` 的 Gradle 单元测试执行。界面全部读取新确认键，旧版记录不参与判断；系统跳转成功清除新确认，显示用户确认而非实时检测成功。
 
 `./scripts/check`（单元测试、Lint、Debug 构建）通过。ADB 检测到 OPPO PLJ110；本轮未覆盖安装或变更手机后台设置。Android 16 / ColorOS 16.1.0 上待验证：升级后旧确认失效、电池豁免下待确认与门禁、智能优化/完全允许两选项核对、返回后的确认重置、明确受限拦截。未发布新版本。
+
+2026-11-11，OPPO PLJ110（Android 16、ColorOS 16.1.0），源码 aa5e008 修复构建使用既有 Release 签名覆盖安装成功，无卸载或清数据。版本仍为 0.3.3/versionCode 6，未更新 GitHub Release。assembleRelease、签名与 ZIP 对齐通过；手机安装 base.apk 的 SHA-256 与本地签名 APK 一致，启动成功，FreezeService 仍在 Enabled services 中。本轮仅验证安装和启动，未代用户确认完全允许后台行为，也未将后台配置交互记为已通过。
