@@ -15,14 +15,14 @@ internal fun backgroundProfile(manufacturer: String = Build.MANUFACTURER): Backg
     when (manufacturer.lowercase(java.util.Locale.ROOT)) {
         "oppo" -> BackgroundProfile(
             "OPPO 后台运行",
-            "1. 打开应用信息，在「耗电管理」中选择「完全允许后台行为」。其他版本可能显示为允许后台活动。\n" +
-                "2. 如果系统提供自启动管理，允许「斩心魔」自启动。\n" +
-                "3. 打开最近任务，在「斩心魔」卡片菜单中选择锁定，减少一键清理的影响。\n" +
-                "ColorOS 不同版本的名称和入口可能不同，请以手机实际显示为准。",
+            "1. 打开系统设置中的应用信息。\n" +
+                "2. 进入「耗电管理」，选择「完全允许后台行为」。\n" +
+                "3. 返回此页，核对状态并确认。\n" +
+                "ColorOS 其他版本可能显示为允许后台活动。",
         )
         else -> BackgroundProfile(
             "后台运行",
-            "在应用信息的电池设置中允许后台运行。如果系统提供自启动或最近任务锁定，可为「斩心魔」开启。",
+            "1. 打开系统设置中的应用信息。\n2. 在电池设置中允许后台运行或选择不优化。\n3. 返回此页，核对状态并确认。",
         )
     }
 

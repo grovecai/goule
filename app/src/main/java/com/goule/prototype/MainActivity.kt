@@ -41,6 +41,8 @@ class MainActivity : Activity() {
 
     private val store by lazy { RuleStore.get(this) }
     private val handler = Handler(Looper.getMainLooper())
+    private var showSetupHelp = false
+    private var showBackgroundExtras = false
     private var page = Page.WELCOME
     private var permissionOrigin = Page.WELCOME
     private var helpOrigin = Page.RULES
@@ -151,9 +153,15 @@ class MainActivity : Activity() {
                 return
             }
         }
-        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND) &&
+        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND, Page.PERMISSION) &&
             (targetsChanged || previous != appState || visibleSignature != signature())
         ) render(keepScroll = true)
+    }
+
+    private fun backgroundStatus(): String = when {
+        !batteryOptimizationIgnored() -> "未完成"
+        !prototypeSettings().getBoolean("background_confirmed", false) -> "待确认"
+        else -> "已确认"
     }
 
     private fun setupMissing(): List<String> = buildList {
@@ -350,30 +358,41 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun permission() {
+    private fun guideHeader(title: String, status: String, purpose: String) {
         up()
-        content.addView(heading("开启无障碍服务"))
-        if (permissionOrigin == Page.WELCOME) {
-            content.addView(copyText("第 1 步 · 开启无障碍服务，为目标 App 计时并执行禁用。下一步设置允许后台运行，减少划掉最近任务后戒律失效的情况。", 14f, NIGHT_MUTED))
-        }
+        content.addView(heading(title))
+        content.addView(tag(status))
+        content.addView(copyText(purpose, 14f, NIGHT_MUTED))
+    }
+
+    private fun permission() {
+        guideHeader("无障碍服务", serviceStatusLabel(), "识别目标 App、累计使用时间，并在用满后显示禁用页。")
+        content.addView(copyText("1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，确认状态为「已连接」。"))
         content.addView(copyText(getString(R.string.disclosure), 14f, NIGHT_MUTED))
-        fun destination() = when (permissionOrigin) {
-            Page.SETTINGS -> Page.SETTINGS
-            Page.HELP -> helpOrigin
-            Page.WELCOME, Page.BACKGROUND -> Page.BACKGROUND
-            else -> Page.RULES
-        }
-        footer(getString(R.string.consent_open), secondaryLabel = "稍后", secondary = {
+        content.addView(button(if (store.consent) "打开系统设置" else "同意并打开系统设置", primary = true) {
             store.welcome()
-            go(destination())
-        }) {
-            store.welcome()
-            val first = !store.activated
             store.approve()
-            awaitingFirstConnection = first
-            go(destination())
             openSystemSettings()
+        })
+        content.addView(button("遇到问题", soft = true) {
+            showSetupHelp = !showSetupHelp
+            render(keepScroll = true)
+        })
+        if (showSetupHelp) {
+            content.addView(copyText("若提示「受限制的设置」，打开应用信息，在右上角菜单中允许受限制的设置，再返回开启服务。服务一直未连接时，可在系统中关闭后重新开启。", 14f, NIGHT_MUTED))
+            content.addView(button("打开应用信息", soft = true) {
+                if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
+            })
         }
+        content.addView(button("下一步：允许后台运行", soft = true) {
+            if (appState != ServiceState.ON) {
+                toast("请先开启无障碍服务并等待连接")
+                return@button
+            }
+            store.welcome()
+            awaitingFirstConnection = false
+            go(Page.BACKGROUND)
+        })
     }
 
     private fun rules() {
@@ -409,7 +428,10 @@ class MainActivity : Activity() {
         if (setupMissing().isNotEmpty()) content.addView(card(3).apply {
             addView(copyText("配置未完成", 15f, NIGHT_GOLD, true))
             addView(copyText(setupMissing().joinToString("\n"), 14f, NIGHT_TEXT))
-            addView(button("完成必要设置", primary = true) { go(Page.BACKGROUND) })
+            addView(button("完成必要设置", primary = true) {
+                permissionOrigin = Page.RULES
+                go(if (appState == ServiceState.ON) Page.BACKGROUND else Page.PERMISSION)
+            })
         })
         if (store.rules.isEmpty()) {
             content.addView(column(8).apply {
@@ -554,7 +576,8 @@ class MainActivity : Activity() {
 
     private fun openPicker(replacing: String? = null) {
         if (setupMissing().isNotEmpty()) {
-            go(Page.BACKGROUND)
+            permissionOrigin = page
+            go(if (appState == ServiceState.ON) Page.BACKGROUND else Page.PERMISSION)
             return
         }
 
@@ -731,21 +754,22 @@ class MainActivity : Activity() {
                 }
             }
         })
-        content.addView(copyText(setupStatus(), 14f, NIGHT_MUTED))
-        content.addView(column(6).apply {
-            divider(this, NIGHT_LINE)
-            addView(row().apply {
-                addView(heading("无障碍服务", 18f),
-                    LinearLayout.LayoutParams(0, -2, 1f))
-                addView(tag(serviceStatusLabel()))
-            }.apply { setPadding(0, dp(6), 0, 0) })
-            addView(copyText("识别目标 App、累计使用时间，并在用满后显示禁用页。", 14f, NIGHT_MUTED))
-            addView(button("打开无障碍设置", primary = true) { requestPermission() })
-            addView(button("查看开启帮助", soft = true) { helpOrigin = page; go(Page.HELP) })
-            divider(this, NIGHT_LINE)
-            addView(heading("允许后台运行", 18f))
-            addView(copyText("请务必完成后台运行设置。系统清理后台时可能关闭无障碍服务，导致计时和禁用中断。OPPO 请在耗电管理中选择「完全允许后台行为」。", 14f, NIGHT_MUTED))
-            addView(button("后台运行设置", primary = true) { go(Page.BACKGROUND) })
+        if (setupMissing().isEmpty()) content.addView(copyText("必要设置已完成", 14f, NIGHT_MUTED))
+        content.addView(column(8).apply {
+            for ((title, status, destination) in listOf(
+                Triple("无障碍服务", serviceStatusLabel(), Page.PERMISSION),
+                Triple("允许后台运行", backgroundStatus(), Page.BACKGROUND),
+            )) {
+                divider(this, NIGHT_LINE)
+                addView(row().apply {
+                    addView(heading(title, 18f), LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(tag(status))
+                })
+                addView(button("去设置", primary = true) {
+                    permissionOrigin = Page.SETTINGS
+                    go(destination)
+                })
+            }
             divider(this, NIGHT_LINE)
             addView(heading("戒律保护", 18f).apply {
                 setPadding(0, dp(6), 0, 0)
@@ -756,42 +780,39 @@ class MainActivity : Activity() {
     }
 
     private fun backgroundSettings() {
-        up()
         val profile = backgroundProfile()
-        content.addView(heading(profile.title))
-        content.addView(copyText(setupStatus(), 14f, NIGHT_MUTED))
-        content.addView(copyText("第 2 步 · 允许后台运行，帮助戒律在划掉最近任务后持续执行。请按下面的指引完成系统设置。", 14f, NIGHT_MUTED))
-        if (appState != ServiceState.ON) {
-            content.addView(button("开启无障碍服务", soft = true) {
-                permissionOrigin = Page.BACKGROUND
-                go(Page.PERMISSION)
-            })
-        }
-        content.addView(copyText("无障碍服务${serviceStatusLabel()}。执行戒律需要服务保持连接。"))
-        content.addView(copyText(if (batteryOptimizationIgnored())
-            "系统电池优化已豁免。厂商后台管理仍需单独检查。"
-        else "系统电池优化未豁免。可在电池优化列表中找到「斩心魔」，按需选择不优化。"))
-        content.addView(button("打开电池优化设置", soft = true) {
-            if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
-        })
+        guideHeader("允许后台运行", backgroundStatus(), "减少系统清理导致的计时和禁用中断。")
         content.addView(copyText(profile.instructions))
-        content.addView(button("打开应用信息", soft = true) {
+        content.addView(button("打开系统设置", primary = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(copyText("完成设置后，返回这里确认无障碍服务已连接，再尝试划掉最近任务并打开受限 App 检查禁用。强行停止应用后，需要重新打开应用并检查无障碍服务。", 14f, NIGHT_MUTED))
-        content.addView(copyText("厂商设置无法自动读取。请检查后台活动、自启动和任务锁定中系统提供的选项，再确认。", 14f, NIGHT_MUTED))
-        content.addView(button("我已核对厂商后台设置", soft = true) {
+        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n厂商设置 · ${if (prototypeSettings().getBoolean("background_confirmed", false)) "用户已确认" else "待确认"}", 14f, NIGHT_MUTED))
+        content.addView(button("我已核对后台运行设置", soft = true) {
             prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
             render(keepScroll = true)
         })
-        content.addView(button("重新检查厂商设置", soft = true) {
-            prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
-            if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
+        content.addView(button("更多稳定性设置", soft = true) {
+            showBackgroundExtras = !showBackgroundExtras
             render(keepScroll = true)
         })
+        if (showBackgroundExtras) {
+            content.addView(copyText("如果手机提供自启动管理，可允许「斩心魔」自启动；也可在最近任务中锁定卡片。这些选项按系统实际提供的功能设置。", 14f, NIGHT_MUTED))
+            content.addView(button("打开电池优化列表", soft = true) {
+                if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
+            })
+            content.addView(button("撤销后台设置确认", soft = true) {
+                prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
+                render(keepScroll = true)
+            })
+        }
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
             if (setupMissing().isNotEmpty()) {
-                toast("请先完成必要设置")
+                if (appState != ServiceState.ON) {
+                    permissionOrigin = Page.BACKGROUND
+                    go(Page.PERMISSION)
+                    return@button
+                }
+                toast("请先完成后台运行设置")
                 render(keepScroll = true)
                 return@button
             }
@@ -808,21 +829,7 @@ class MainActivity : Activity() {
         return copyText(marked, 15f, NIGHT_MUTED)
     }
 
-    private fun help() {
-        up()
-        content.addView(heading("怎么开启无障碍服务"))
-        content.addView(copyText("1. 打开无障碍设置。\n2. 在「已下载的应用」中找到「斩心魔」，打开开关。\n3. 返回「斩心魔」的设置页，确认「无障碍服务」显示「已连接」。"))
-        content.addView(button("打开无障碍设置", primary = true) { requestPermission() })
-        if (Build.VERSION.SDK_INT >= 33) {
-            content.addView(card().apply {
-                addView(heading("如果系统提示「受限制的设置」", 17f))
-                addView(copyText("打开「斩心魔」的应用信息。若右上角「⋮」菜单里有「允许受限制的设置」，点选并按系统提示确认，再回到上面开启服务。", 14f, NIGHT_MUTED))
-                addView(button("打开应用信息", soft = true) {
-                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
-                })
-            })
-        }
-    }
+    private fun help() = permission()
 
     private fun bottomNavigation() {
         divider(root, NIGHT_LINE)
@@ -855,13 +862,8 @@ class MainActivity : Activity() {
     }
 
     private fun requestPermission() {
-        if (store.consent) {
-            if (!store.activated) awaitingFirstConnection = true
-            openSystemSettings()
-        } else {
-            permissionOrigin = page
-            go(Page.PERMISSION)
-        }
+        permissionOrigin = page
+        go(Page.PERMISSION)
     }
 
     private fun openSystemSettings() {
