@@ -204,3 +204,5 @@ OPPO PLJ110，Android 16、ColorOS 16.1.0，Debug 0.2 覆盖安装。通过长�
 ### 欢迎页字体实机（2026-11-11）
 
 OPPO PLJ110，Android 16、ColorOS 16.1.0，Debug 0.2 覆盖安装，通过长按设置标题打开欢迎页。截图确认马善政标题两行完整，霞鹜文楷文案和按钮显示正确，时长数字保持原字体。字体子集 cmap 覆盖所有对应固定文字，OFL 及版权随包保存。`./scripts/check` 通过。本轮未复测短屏与大字号。字体来源为 google/fonts 的 ofl/mashanzheng 与 lxgw/LxgwWenKai 的 fonts/TTF/LXGWWenKai-Medium.ttf，下载于 2026-11-11。
+
+欢迎页大标语已合入生成插画 welcome_composed.webp，使用粗笔行书，保留透明语义标题供无障碍朗读。底部仍为原生文案与操作。2026-11-11 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖安装并截图核对字形、手机、握手及底部按钮均完整；短屏与大字号未复测。图片按完整窗口铺展，不再使用双层主体叠加。

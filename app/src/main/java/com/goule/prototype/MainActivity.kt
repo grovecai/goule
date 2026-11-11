@@ -334,16 +334,11 @@ class MainActivity : Activity() {
 
     private fun welcome() {
         val title = "斩断无尽的下滑\n守住道心"
-        val colorTitle = SpannableString(title).apply {
-            setSpan(ForegroundColorSpan(NIGHT_GOLD), title.indexOf('\n') + 1, title.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
         val height = resources.configuration.screenHeightDp
         val short = height < 700
         content.setPadding(dp(19), dp(if (short) 22 else 48), dp(19), dp(18))
-        content.addView(copyText(colorTitle, 34f, NIGHT_TEXT, true).apply {
+        content.addView(copyText(title, 34f, Color.TRANSPARENT, true).apply {
             isAccessibilityHeading = true
-            typeface = resources.getFont(R.font.welcome_brush)
-            paint.isFakeBoldText = false
             setLineSpacing(0f, 1.06f)
             letterSpacing = 0f
         })

@@ -46,13 +46,13 @@ internal fun nightSurface() = GradientDrawable(
 
 internal class IllustratedBackdrop(context: Context, private val welcome: Boolean) : Drawable() {
     private val bitmap = BitmapFactory.decodeResource(
-        context.resources, if (welcome) R.drawable.rescue_art else R.drawable.rules_sword,
+        context.resources, if (welcome) R.drawable.welcome_composed else R.drawable.rules_sword,
     )
     private val image = Paint(Paint.FILTER_BITMAP_FLAG)
     private val shade = Paint()
-    private val hero = Paint(Paint.FILTER_BITMAP_FLAG)
 
     override fun onBoundsChange(bounds: Rect) {
+        if (welcome) return
         val width = bounds.width().toFloat()
         val height = bounds.height().toFloat()
         if (width <= 0f || height <= 0f) return
@@ -70,22 +70,7 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
         shade.shader = LinearGradient(
             0f, bounds.top.toFloat(), 0f, bounds.bottom.toFloat(), colors, stops, Shader.TileMode.CLAMP,
         )
-        if (welcome) {
-            val scale = widthScale * 1.24f
-            val artHeight = bitmap.height * scale
-            // Lift the falling phone above the caption on shorter screens.
-            val center = (.39f + (height / width - 1.8f) * .2f).coerceIn(.39f, .47f) - .025f
-            val top = bounds.top + (height * center - artHeight / 2f).coerceAtLeast(0f)
-            val fade = LinearGradient(
-                0f, top, 0f, top + artHeight,
-                intArrayOf(0, Color.BLACK, Color.BLACK, 0), floatArrayOf(0f, .18f, .94f, 1f),
-                Shader.TileMode.CLAMP,
-            )
-            hero.shader = ComposeShader(
-                artShader(scale, bounds.left + (width - bitmap.width * scale) * .02f, top),
-                fade, PorterDuff.Mode.DST_IN,
-            )
-        }
+
     }
 
     private fun artShader(scale: Float, left: Float, top: Float) =
@@ -97,22 +82,23 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
         }
 
     override fun draw(canvas: Canvas) {
+        if (welcome) {
+            canvas.drawBitmap(bitmap, null, bounds, image)
+            return
+        }
         canvas.drawRect(bounds, image)
         canvas.drawRect(bounds, shade)
-        if (welcome) canvas.drawRect(bounds, hero)
     }
 
     override fun setAlpha(alpha: Int) {
         image.alpha = alpha
         shade.alpha = alpha
-        hero.alpha = alpha
         invalidateSelf()
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         image.colorFilter = colorFilter
         shade.colorFilter = colorFilter
-        hero.colorFilter = colorFilter
         invalidateSelf()
     }
 
