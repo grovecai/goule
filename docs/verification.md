@@ -212,3 +212,7 @@ OPPO PLJ110，Android 16、ColorOS 16.1.0，Debug 0.2 覆盖安装，通过长�
 2026-11-11 按用户重新指定的早期样图恢复标语字形、比例与位置，基于参考图清理系统和底部 UI 后作为背景，底部文案及操作仍原生渲染。OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖安装与截图核对通过，`./scripts/check` 通过。生成式清理可能带来背景纹理细节变化，短屏和大字号未复测。
 
 2026-11-11 戒律列表页首两行标语改为透明底书法字图，保留道心浅青与斩断金色，带无障碍朗读描述。OPPO PLJ110（Android 16、ColorOS 16.1.0）Debug 0.2 覆盖安装并截图确认字图无矩形底色、标语与添加按钮完整可见，列表行布局正常。`./scripts/check` 通过，短屏及大字号未复测。
+
+## v0.3 发布包验证
+
+2026-11-11，版本 0.3/versionCode 3，最低 Android 11。`./scripts/check` 与 `assembleRelease` 通过。发布 APK 使用已有发布密钥签名，apksigner 验证与 zipalign 检查通过，证书 SHA-256 与 v0.2 下载发布包一致。APK 元数据核对包名 com.goule.prototype、版本和最低 SDK 均正确。附带 SHA-256 校验文件。本次签名发布包尚未真机安装，源码调试及独立包的 OPPO 结果见前文。
