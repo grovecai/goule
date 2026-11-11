@@ -413,20 +413,13 @@ class MainActivity : Activity() {
             val height = resources.configuration.screenHeightDp
             content.addView(Space(this), LinearLayout.LayoutParams(-1, dp((height * .43f).toInt())))
             content.addView(row().apply {
-                val words = "道心自己守\n心魔上头，一剑斩断"
-                val title = SpannableString(words)
-                for ((word, color) in listOf("道心" to 0xffa9e5c1.toInt(), "斩断" to NIGHT_GOLD)) {
-                    val start = words.indexOf(word)
-                    title.setSpan(ForegroundColorSpan(color), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    title.setSpan(StyleSpan(Typeface.BOLD), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    title.setSpan(RelativeSizeSpan(1.16f), start, start + word.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-                val titleSize = (resources.configuration.screenWidthDp - 90).times(.0765f).coerceIn(18f, 23f)
-                addView(copyText(title, titleSize, NIGHT_TEXT, bold = true).apply {
+                addView(ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.rules_slogan)
+                    adjustViewBounds = true
+                    scaleType = ImageView.ScaleType.FIT_START
+                    contentDescription = "道心自己守，心魔上头，一剑斩断"
                     isAccessibilityHeading = true
-                    letterSpacing = -.035f
-                },
-                    LinearLayout.LayoutParams(0, -2, 1f))
+                }, LinearLayout.LayoutParams(0, -2, 1f))
                 addView(button("＋", soft = true) { openPicker() }.apply {
                     contentDescription = "添加心魔"
                     textSize = 25f
