@@ -63,7 +63,7 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
             baseScale, bounds.left + (width - bitmap.width * baseScale) * .55f,
             bounds.top + if (welcome) (height - bitmap.height * baseScale) * .5f else 0f,
         )
-        val colors = if (welcome) intArrayOf(NIGHT, 0xc4211327.toInt(), 0xbf211327.toInt(), NIGHT)
+        val colors = if (welcome) intArrayOf(NIGHT, 0xec211327.toInt(), 0xd9211327.toInt(), NIGHT)
             else intArrayOf(0x66110917, 0, 0, 0x80190d24.toInt(), 0xa6190d24.toInt(), NIGHT)
         val stops = if (welcome) floatArrayOf(0f, .30f, .64f, 1f)
             else floatArrayOf(0f, .10f, .34f, .47f, .68f, 1f)
@@ -71,10 +71,10 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
             0f, bounds.top.toFloat(), 0f, bounds.bottom.toFloat(), colors, stops, Shader.TileMode.CLAMP,
         )
         if (welcome) {
-            val scale = widthScale * 1.04f
+            val scale = widthScale * 1.14f
             val artHeight = bitmap.height * scale
             // Lift the falling phone above the caption on shorter screens.
-            val center = (.39f + (height / width - 1.8f) * .2f).coerceIn(.39f, .47f)
+            val center = (.39f + (height / width - 1.8f) * .2f).coerceIn(.39f, .47f) - .025f
             val top = bounds.top + (height * center - artHeight / 2f).coerceAtLeast(0f)
             val fade = LinearGradient(
                 0f, top, 0f, top + artHeight,
@@ -82,7 +82,7 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
                 Shader.TileMode.CLAMP,
             )
             hero.shader = ComposeShader(
-                artShader(scale, bounds.left + (width - bitmap.width * scale) * .6f, top),
+                artShader(scale, bounds.left + (width - bitmap.width * scale) * .1f, top),
                 fade, PorterDuff.Mode.DST_IN,
             )
         }

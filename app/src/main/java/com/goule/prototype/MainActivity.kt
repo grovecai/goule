@@ -334,24 +334,26 @@ class MainActivity : Activity() {
         }
         val height = resources.configuration.screenHeightDp
         val short = height < 700
-        content.setPadding(dp(19), dp(if (short) 14 else 30), dp(19), dp(18))
+        content.setPadding(dp(19), dp(if (short) 22 else 48), dp(19), dp(18))
         content.addView(copyText(colorTitle, 34f, NIGHT_TEXT, true).apply {
             isAccessibilityHeading = true
             setLineSpacing(0f, 1f)
             letterSpacing = -.06f
         })
-        content.addView(Space(this), LinearLayout.LayoutParams(-1, dp(if (short) 130 else 180), 1f))
+        content.addView(Space(this), LinearLayout.LayoutParams(-1, dp(if (short) 110 else 150), 1f))
         content.addView(copyText("你清醒时立下戒律\n心魔上头时，替你斩断刷屏循环", 16f, NIGHT_TEXT, true))
         val example = card(fill = 0xfffff3da.toInt(), border = null).apply {
+            setPadding(dp(13), dp(8), dp(13), dp(8))
             addView(row().apply {
                 addView(ImageView(this@MainActivity).apply {
                     setImageResource(R.drawable.sample_video)
                     contentDescription = "示例短视频 App"
-                }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(12) })
+                }, LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginEnd = dp(12) })
                 addView(durations(DEFAULT_USE, DEFAULT_BLOCK, INK, inline = true), LinearLayout.LayoutParams(0, -2, 1f))
             })
         }
         content.addView(example)
+        content.addView(Space(this), LinearLayout.LayoutParams(-1, dp(if (short) 0 else 8)))
         footer("立下第一条戒律") {
             onboarding = true
             permissionOrigin = Page.WELCOME
@@ -489,7 +491,7 @@ class MainActivity : Activity() {
     }
 
     private fun appRow(id: String, label: String, status: String? = null, color: Int = NIGHT_TEXT) = row().apply {
-        addView(iconFor(id), LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(10) })
+        addView(iconFor(id), LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginEnd = dp(10) })
         addView(copyText(label, 14f, color, true), LinearLayout.LayoutParams(0, -2, 1f))
         if (status != null) addView(tag(status), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(6) })
     }
