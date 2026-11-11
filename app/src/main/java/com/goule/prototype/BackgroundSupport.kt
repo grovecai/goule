@@ -53,11 +53,7 @@ internal fun Activity.openBackgroundSettings(battery: Boolean): Boolean {
 internal fun Activity.backgroundRestricted(): Boolean =
     getSystemService(ActivityManager::class.java).isBackgroundRestricted
 
-// ColorOS PLJ110 exposes its unrestricted mode through the Android allowlist.
-// Other manufacturers retain manual confirmation until their mapping is verified.
-internal fun automaticBackgroundDetection(): Boolean =
-    Build.MANUFACTURER.equals("oppo", ignoreCase = true)
-
-internal fun Activity.backgroundConfigured(): Boolean =
-    batteryOptimizationIgnored() && !backgroundRestricted() &&
-        (automaticBackgroundDetection() || prototypeSettings().getBoolean("background_confirmed", false))
+internal fun Activity.backgroundConfigured(): Boolean = backgroundReady(
+    batteryOptimizationIgnored(), backgroundRestricted(),
+    prototypeSettings().getBoolean("background_confirmed", false),
+)

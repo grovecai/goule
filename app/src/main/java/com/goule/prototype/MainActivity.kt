@@ -163,7 +163,7 @@ class MainActivity : Activity() {
 
     private fun backgroundStatus(): String = when {
         backgroundConfigured() -> "已设置"
-        !batteryOptimizationIgnored() || backgroundRestricted() -> "未设置"
+        backgroundRestricted() -> "未设置"
         else -> "待确认"
     }
 
@@ -184,7 +184,7 @@ class MainActivity : Activity() {
         val now = store.now()
         return when (page) {
             Page.RULES -> store.rules.map { ruleStatus(it, now) } + setupStatus()
-            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
+            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus(), batteryOptimizationIgnored().toString(), backgroundRestricted().toString())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
             }.orEmpty()
@@ -790,13 +790,16 @@ class MainActivity : Activity() {
         content.addView(button("打开系统设置", primary = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已设置" else "未设置"}\n后台限制 · ${if (backgroundRestricted()) "受限制" else "未受限制"}", 14f, NIGHT_MUTED))
-        if (!automaticBackgroundDetection()) {
-            content.addView(copyText("此系统的厂商开关需要手动核对。", 14f, NIGHT_MUTED))
-            content.addView(button("我已核对后台运行设置", soft = true) {
+        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免（不代表后台开关未开启）"}\n后台限制 · ${if (backgroundRestricted()) "受限制" else "未受限制"}", 14f, NIGHT_MUTED))
+        if (!batteryOptimizationIgnored()) {
+            content.addView(copyText("系统电池优化名单可能不反映厂商后台开关。若已允许后台运行，请在系统中核对后确认。", 14f, NIGHT_MUTED))
+            content.addView(button("已在系统中允许后台运行", soft = true) {
                 prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
                 render(keepScroll = true)
             })
+        }
+        if (prototypeSettings().getBoolean("background_confirmed", false)) {
+            content.addView(copyText("厂商后台设置 · 用户已确认", 14f, NIGHT_MUTED))
         }
         content.addView(button("更多稳定性设置", soft = true) {
             showBackgroundExtras = !showBackgroundExtras
@@ -807,7 +810,7 @@ class MainActivity : Activity() {
             content.addView(button("打开电池优化列表", soft = true) {
                 if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
             })
-            if (!automaticBackgroundDetection()) content.addView(button("撤销后台设置确认", soft = true) {
+            content.addView(button("撤销后台设置确认", soft = true) {
                 prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
                 render(keepScroll = true)
             })

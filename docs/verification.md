@@ -216,3 +216,9 @@ OPPO PLJ110，Android 16、ColorOS 16.1.0，Debug 0.2 覆盖安装，通过长�
 ## v0.3 发布包验证
 
 2026-11-11，版本 0.3/versionCode 3，最低 Android 11。`./scripts/check` 与 `assembleRelease` 通过。发布 APK 使用已有发布密钥签名，apksigner 验证与 zipalign 检查通过，证书 SHA-256 与 v0.2 下载发布包一致。APK 元数据核对包名 com.goule.prototype、版本和最低 SDK 均正确。附带 SHA-256 校验文件。本次签名发布包尚未真机安装，源码调试及独立包的 OPPO 结果见前文。
+
+## v0.3.1 后台检测修复验证
+
+2026-11-11，OPPO PLJ110，Android 16、ColorOS 16.1.0。v0.3 签名发布版实际复现耗电管理完全允许后台行为单选项为 checked=true，但系统 deviceidle 豁免名单无该包。此前将这两者等同的判定不成立。
+
+v0.3.1/versionCode 4 使用原发布密钥签名，覆盖 v0.3 安装成功。系统后台未受限、未豁免时页面显示待确认；根据已核对的系统开关点确认后显示已设置，继续按钮可用并进入添加心魔。无卸载或清数据。新增纯 Kotlin 单元测试覆盖所有豁免/确认组合、明确后台限制始终阻止继续，接入现有 Gradle 单元测试，`./scripts/check` 与 assembleRelease 通过。
