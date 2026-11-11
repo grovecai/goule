@@ -264,3 +264,7 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 2026-11-11，OPPO PLJ110，Android 16、ColorOS 16.1.0，正式 0.3.3/code 6。原版本重启对照（bootCount 7 → 8）确认首次解锁前授权仍在，服务进程启动后由 `OplusRiskAccessibilityController` 以 `sideload_app` 原因撤权；无应用崩溃。已确认完全允许后台行为和二次保持开启，仍不能避免撤权。详细时间线见 [F02 根因复核](oppo-regression-2026-11-11.md#f02-根因复核2026-11-11bootcount-7--8)。
 
 用户选择完善恢复交互，未采用自动重授权方案。新构建沿用发布签名覆盖安装，无卸载、无清除正式数据，版本仍 0.3.3/code 6，未发布 GitHub Release。设备检查覆盖服务关闭后的首页「戒律已暂停」、设置/权限页「已关闭」、暖色状态和重新开启入口，权限页包含 OPPO 撤权及二次提醒说明。实际走通权限页 → 系统开启 → 返回，完成延迟的保持开启确认后，首页暂停提示清除，设置页截图为已设置，Bound services 中确认斩心魔绑定。安装包 SHA-256 与本地一致（56392500df60fa0f4a343e1237d93f1c980f8129850aa833611a3f255ced0101）。`./scripts/check`、Release 构建和签名校验通过。uiautomator 采集时暂时正在连接，以采集结束后的截图及绑定核对为准；本轮不重复完整首次流程、计时引擎或其他品牌测试。
+
+### v0.3.4 发布包验证
+
+2026-11-11，0.3.4/versionCode 7，包名 com.goule.prototype，最低 Android 11。`./scripts/check`、assembleRelease、apksigner 和 zipalign 校验通过；下载 v0.3.3 发布资产并比对证书 SHA-256，一致。APK SHA-256：`77abf3db1b9460bb96d371eda233df2c3ef2847503344f983f8d255c8ff84e4c`。发布附独立校验文件和更新说明。版本号更新包未另装手机，相关功能真机结果见上一节及完整回归矩阵，失败项未宣称修复。
