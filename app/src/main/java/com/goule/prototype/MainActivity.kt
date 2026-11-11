@@ -162,25 +162,22 @@ class MainActivity : Activity() {
     }
 
     private fun backgroundStatus(): String = when {
-        !batteryOptimizationIgnored() -> "未完成"
-        !prototypeSettings().getBoolean("background_confirmed", false) -> "待确认"
-        else -> "已确认"
+        backgroundConfigured() -> "已设置"
+        !batteryOptimizationIgnored() || backgroundRestricted() -> "未设置"
+        else -> "待确认"
     }
 
     private fun setupMissing(): List<String> = buildList {
         if (appState != ServiceState.ON) add("无障碍服务${serviceStatusLabel()}")
-        if (!batteryOptimizationIgnored()) add("电池优化尚未豁免")
-        if (!prototypeSettings().getBoolean("background_confirmed", false)) add("厂商后台设置待确认")
+        if (!backgroundConfigured()) add("允许后台运行${backgroundStatus()}")
     }
 
-    private fun setupStatus() = "无障碍服务 · ${serviceStatusLabel()}\n" +
-        "电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n" +
-        "厂商后台设置 · ${if (prototypeSettings().getBoolean("background_confirmed", false)) "用户已确认，请在系统变更后复查" else "待用户确认"}"
+    private fun setupStatus() = "无障碍服务 · ${serviceStatusLabel()}\n允许后台运行 · ${backgroundStatus()}"
 
     private fun serviceStatusLabel() = when (appState) {
-        ServiceState.ON -> "已连接"
+        ServiceState.ON -> "已设置"
         ServiceState.CONNECTING -> "正在连接"
-        ServiceState.PAUSED, ServiceState.OFF -> "未开启"
+        ServiceState.PAUSED, ServiceState.OFF -> "未设置"
     }
 
     private fun signature(): List<String> {
@@ -374,7 +371,7 @@ class MainActivity : Activity() {
 
     private fun permission() {
         guideHeader("无障碍服务", serviceStatusLabel(), "识别目标 App、累计使用时间，并在用满后显示禁用页。")
-        content.addView(copyText("1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，确认状态为「已连接」。"))
+        content.addView(copyText("1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，确认状态为「已设置」。"))
         content.addView(copyText(getString(R.string.disclosure), 14f, NIGHT_MUTED))
         content.addView(button(if (store.consent) "打开系统设置" else "同意并打开系统设置", primary = true) {
             store.approve()
@@ -794,11 +791,14 @@ class MainActivity : Activity() {
         content.addView(button("打开系统设置", primary = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n厂商设置 · ${if (prototypeSettings().getBoolean("background_confirmed", false)) "用户已确认" else "待确认"}", 14f, NIGHT_MUTED))
-        content.addView(button("我已核对后台运行设置", soft = true) {
-            prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
-            render(keepScroll = true)
-        })
+        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已设置" else "未设置"}\n后台限制 · ${if (backgroundRestricted()) "受限制" else "未受限制"}", 14f, NIGHT_MUTED))
+        if (!automaticBackgroundDetection()) {
+            content.addView(copyText("此系统的厂商开关需要手动核对。", 14f, NIGHT_MUTED))
+            content.addView(button("我已核对后台运行设置", soft = true) {
+                prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
+                render(keepScroll = true)
+            })
+        }
         content.addView(button("更多稳定性设置", soft = true) {
             showBackgroundExtras = !showBackgroundExtras
             render(keepScroll = true)
@@ -808,7 +808,7 @@ class MainActivity : Activity() {
             content.addView(button("打开电池优化列表", soft = true) {
                 if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
             })
-            content.addView(button("撤销后台设置确认", soft = true) {
+            if (!automaticBackgroundDetection()) content.addView(button("撤销后台设置确认", soft = true) {
                 prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
                 render(keepScroll = true)
             })
@@ -828,6 +828,9 @@ class MainActivity : Activity() {
             onboarding = false
             awaitingFirstConnection = false
             if (store.rules.isEmpty()) openPicker() else go(Page.RULES)
+        }.apply {
+            isEnabled = setupMissing().isEmpty()
+            alpha = if (isEnabled) 1f else .45f
         })
     }
 
