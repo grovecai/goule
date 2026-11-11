@@ -57,3 +57,5 @@ Google Play 版本应准确披露无障碍用途，提供单独的应用内显�
 OPPO 后台配置采用 `PowerManager.isIgnoringBatteryOptimizations` 与 `ActivityManager.isBackgroundRestricted` 组合检测，对应 PLJ110 已观察到的 ColorOS 后台设置映射。其他厂商在取得验证前仍保留用户确认。系统状态不代表自启动、任务锁定等所有厂商开关，跨型号映射需要补充实测。
 
 0.3.1 修正后台检测：厂商后台开关与 Android 电池优化豁免不保证同步。无系统明确后台限制时，系统豁免或用户核对确认任一满足即可完成配置；明确受限时仍阻止继续。此约定覆盖此前 OPPO 自动映射假设。
+
+2026-11-11 再次修正：用户反馈电池豁免、系统未受限同时成立时，OPPO 仍可能处于智能优化。因此电池豁免只作独立诊断，不能作为后台配置完成证据。未检测到系统限制且用户明确核对厂商选项才允许继续；状态标为用户已确认，不代表实时读取。新确认键不继承旧记录，再次通过 App 打开后台系统设置会清除确认。此约定覆盖此前自动通过与豁免/确认二选一逻辑。公开接口范围参考 [PowerManager](https://developer.android.com/reference/android/os/PowerManager#isIgnoringBatteryOptimizations(java.lang.String)) 与 [ActivityManager](https://developer.android.com/reference/android/app/ActivityManager#isBackgroundRestricted())。

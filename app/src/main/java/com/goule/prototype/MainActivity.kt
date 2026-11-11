@@ -162,8 +162,8 @@ class MainActivity : Activity() {
     }
 
     private fun backgroundStatus(): String = when {
-        backgroundConfigured() -> "已设置"
-        backgroundRestricted() -> "未设置"
+        backgroundRestricted() -> "受限制"
+        backgroundConfigured() -> "用户已确认"
         else -> "待确认"
     }
 
@@ -478,7 +478,7 @@ class MainActivity : Activity() {
     private fun tag(status: String): TextView {
         val (fill, color) = when {
             status.startsWith("禁用至") -> COLD to BLUE
-            status in listOf("找不到此 App", "未生效", "未开启", "正在连接") -> WARM to WARNING
+            status in listOf("找不到此 App", "未生效", "未开启", "未设置", "正在连接", "待确认", "受限制") -> WARM to WARNING
             else -> MINT to TEAL
         }
         return copyText(status, 12f, color).apply {
@@ -758,7 +758,7 @@ class MainActivity : Activity() {
                 }
             }
         })
-        if (setupMissing().isEmpty()) content.addView(copyText("必要设置已完成", 14f, NIGHT_MUTED))
+        if (setupMissing().isEmpty()) content.addView(copyText("无障碍已设置，后台设置已由你确认", 14f, NIGHT_MUTED))
         content.addView(column(8).apply {
             for ((title, status, destination) in listOf(
                 Triple("无障碍服务", serviceStatusLabel(), Page.PERMISSION),
@@ -790,15 +790,22 @@ class MainActivity : Activity() {
         content.addView(button("打开系统设置", primary = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免（不代表后台开关未开启）"}\n后台限制 · ${if (backgroundRestricted()) "受限制" else "未受限制"}", 14f, NIGHT_MUTED))
-        if (!batteryOptimizationIgnored()) {
-            content.addView(copyText("系统电池优化名单可能不反映厂商后台开关。若已允许后台运行，请在系统中核对后确认。", 14f, NIGHT_MUTED))
-            content.addView(button("已在系统中允许后台运行", soft = true) {
-                prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
+        content.addView(copyText("无法自动读取厂商后台选项，请按上方步骤核对。用户确认仅记录本次核对；以后在系统中修改此项，请回来重新核对。", 14f, NIGHT_MUTED))
+        content.addView(copyText("电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n系统后台限制 · ${if (backgroundRestricted()) "受限制" else "未检测到限制"}\n以上检测结果不代表厂商已完全允许后台运行。", 14f, NIGHT_MUTED))
+        if (!prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
+            content.addView(button(profile.confirmation, soft = true) {
+                if (backgroundRestricted()) {
+                    toast("系统仍限制后台运行，请先解除限制")
+                    return@button
+                }
+                prototypeSettings().edit().putBoolean(BACKGROUND_CONFIRMATION_KEY, true).apply()
                 render(keepScroll = true)
+            }.apply {
+                isEnabled = !backgroundRestricted()
+                alpha = if (isEnabled) 1f else .45f
             })
         }
-        if (prototypeSettings().getBoolean("background_confirmed", false)) {
+        if (prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
             content.addView(copyText("厂商后台设置 · 用户已确认", 14f, NIGHT_MUTED))
         }
         content.addView(button("更多稳定性设置", soft = true) {
@@ -810,11 +817,9 @@ class MainActivity : Activity() {
             content.addView(button("打开电池优化列表", soft = true) {
                 if (!openBackgroundSettings(battery = true)) toast("请手动打开系统设置")
             })
-            if (!batteryOptimizationIgnored() &&
-                prototypeSettings().getBoolean("background_confirmed", false)
-            ) {
+            if (prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false)) {
                 content.addView(button("重新核对后台设置", soft = true) {
-                    prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
+                    prototypeSettings().edit().remove(BACKGROUND_CONFIRMATION_KEY).apply()
                     toast("已清除手动确认，请重新核对系统设置")
                     render(keepScroll = true)
                 })

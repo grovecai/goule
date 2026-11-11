@@ -10,7 +10,7 @@ import android.os.PowerManager
 import android.provider.Settings
 
 /** Add manufacturer instructions here while keeping system actions shared. */
-internal data class BackgroundProfile(val title: String, val instructions: String)
+internal data class BackgroundProfile(val title: String, val instructions: String, val confirmation: String)
 
 internal fun backgroundProfile(manufacturer: String = Build.MANUFACTURER): BackgroundProfile =
     when (manufacturer.lowercase(java.util.Locale.ROOT)) {
@@ -19,11 +19,13 @@ internal fun backgroundProfile(manufacturer: String = Build.MANUFACTURER): Backg
             "1. 打开系统设置中的应用信息。\n" +
                 "2. 进入「耗电管理」，选择「完全允许后台行为」。\n" +
                 "3. 返回此页，核对状态并确认。\n" +
-                "ColorOS 其他版本可能显示为允许后台活动。",
+                "「智能优化后台运行」不满足此项要求。ColorOS 其他版本可能显示为允许后台活动。",
+            "我已选择「完全允许后台行为」",
         )
         else -> BackgroundProfile(
             "后台运行",
             "1. 打开系统设置中的应用信息。\n2. 在电池设置中允许后台运行或选择不优化。\n3. 返回此页，核对状态并确认。",
+            "我已在系统中允许后台运行",
         )
     }
 
@@ -40,6 +42,7 @@ internal fun Activity.openBackgroundSettings(battery: Boolean): Boolean {
     for (intent in candidates) {
         try {
             startActivity(intent)
+            prototypeSettings().edit().remove(BACKGROUND_CONFIRMATION_KEY).apply()
             return true
         } catch (_: ActivityNotFoundException) {
             // Continue to the next public system entry point.
@@ -54,8 +57,8 @@ internal fun Activity.backgroundRestricted(): Boolean =
     getSystemService(ActivityManager::class.java).isBackgroundRestricted
 
 internal fun Activity.backgroundConfigured(): Boolean = backgroundReady(
-    batteryOptimizationIgnored(), backgroundRestricted(),
-    prototypeSettings().getBoolean("background_confirmed", false),
+    backgroundRestricted(),
+    prototypeSettings().getBoolean(BACKGROUND_CONFIRMATION_KEY, false),
 )
 
 internal fun restrictedSettingsHelp(): String = if (Build.MANUFACTURER.equals("oppo", ignoreCase = true)) {
