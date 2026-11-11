@@ -41,6 +41,7 @@ class MainActivity : Activity() {
 
     private val store by lazy { RuleStore.get(this) }
     private val handler = Handler(Looper.getMainLooper())
+    private var onboarding = false
     private var showSetupHelp = false
     private var showBackgroundExtras = false
     private var page = Page.WELCOME
@@ -76,6 +77,7 @@ class MainActivity : Activity() {
         }
             ?: if (store.welcomed) Page.RULES else Page.WELCOME
         savedInstanceState?.let {
+            onboarding = it.getBoolean("onboarding")
             permissionOrigin = Page.valueOf(it.getString("origin", Page.WELCOME.name))
             helpOrigin = Page.valueOf(it.getString("helpOrigin", Page.RULES.name))
             pickerReturn = Page.valueOf(it.getString("pickerReturn", Page.RULES.name))
@@ -98,6 +100,7 @@ class MainActivity : Activity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("page", page.name)
+        outState.putBoolean("onboarding", onboarding)
         outState.putString("origin", permissionOrigin.name)
         outState.putString("helpOrigin", helpOrigin.name)
         outState.putString("pickerReturn", pickerReturn.name)
@@ -353,6 +356,7 @@ class MainActivity : Activity() {
         }
         content.addView(example)
         footer("立下第一条戒律") {
+            onboarding = true
             permissionOrigin = Page.WELCOME
             go(Page.PERMISSION)
         }
@@ -361,6 +365,9 @@ class MainActivity : Activity() {
     private fun guideHeader(title: String, status: String, purpose: String) {
         up()
         content.addView(heading(title))
+        if (onboarding) content.addView(copyText(
+            if (page == Page.PERMISSION) "第 1 步，共 2 步" else "第 2 步，共 2 步", 14f, NIGHT_MUTED,
+        ))
         content.addView(tag(status))
         content.addView(copyText(purpose, 14f, NIGHT_MUTED))
     }
@@ -370,7 +377,6 @@ class MainActivity : Activity() {
         content.addView(copyText("1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，确认状态为「已连接」。"))
         content.addView(copyText(getString(R.string.disclosure), 14f, NIGHT_MUTED))
         content.addView(button(if (store.consent) "打开系统设置" else "同意并打开系统设置", primary = true) {
-            store.welcome()
             store.approve()
             openSystemSettings()
         })
@@ -389,9 +395,11 @@ class MainActivity : Activity() {
                 toast("请先开启无障碍服务并等待连接")
                 return@button
             }
-            store.welcome()
             awaitingFirstConnection = false
             go(Page.BACKGROUND)
+        }.apply {
+            isEnabled = appState == ServiceState.ON
+            alpha = if (isEnabled) 1f else .45f
         })
     }
 
@@ -816,6 +824,8 @@ class MainActivity : Activity() {
                 render(keepScroll = true)
                 return@button
             }
+            store.welcome()
+            onboarding = false
             awaitingFirstConnection = false
             if (store.rules.isEmpty()) openPicker() else go(Page.RULES)
         })
@@ -879,7 +889,7 @@ class MainActivity : Activity() {
             Page.REMOVE -> go(Page.DETAIL)
             Page.DISCARD -> go(Page.FORM)
             Page.HELP -> go(helpOrigin)
-            Page.BACKGROUND -> go(Page.SETTINGS)
+            Page.BACKGROUND -> if (onboarding) go(Page.PERMISSION) else go(Page.SETTINGS)
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null
