@@ -156,6 +156,16 @@ class MainActivity : Activity() {
         ) render(keepScroll = true)
     }
 
+    private fun setupMissing(): List<String> = buildList {
+        if (appState != ServiceState.ON) add("无障碍服务${serviceStatusLabel()}")
+        if (!batteryOptimizationIgnored()) add("电池优化尚未豁免")
+        if (!prototypeSettings().getBoolean("background_confirmed", false)) add("厂商后台设置待确认")
+    }
+
+    private fun setupStatus() = "无障碍服务 · ${serviceStatusLabel()}\n" +
+        "电池优化 · ${if (batteryOptimizationIgnored()) "已豁免" else "未豁免"}\n" +
+        "厂商后台设置 · ${if (prototypeSettings().getBoolean("background_confirmed", false)) "用户已确认，请在系统变更后复查" else "待用户确认"}"
+
     private fun serviceStatusLabel() = when (appState) {
         ServiceState.ON -> "已连接"
         ServiceState.CONNECTING -> "正在连接"
@@ -165,8 +175,8 @@ class MainActivity : Activity() {
     private fun signature(): List<String> {
         val now = store.now()
         return when (page) {
-            Page.RULES -> store.rules.map { ruleStatus(it, now) }
-            Page.BACKGROUND -> listOf(batteryOptimizationIgnored().toString())
+            Page.RULES -> store.rules.map { ruleStatus(it, now) } + setupStatus()
+            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
             }.orEmpty()
@@ -335,6 +345,7 @@ class MainActivity : Activity() {
         }
         content.addView(example)
         content.addView(copyText("首次使用需开启无障碍服务，并设置允许后台运行。", 14f, NIGHT_MUTED))
+        content.addView(copyText(setupStatus(), 13f, NIGHT_MUTED))
         footer("立下第一条戒律") {
             permissionOrigin = Page.WELCOME
             go(Page.PERMISSION)
@@ -397,17 +408,10 @@ class MainActivity : Activity() {
                 }, LinearLayout.LayoutParams(dp(44), -2).apply { marginStart = dp(8) })
             })
         }
-        if (appState != ServiceState.ON) content.addView(card(3, WARM, null).apply {
-            val connecting = appState == ServiceState.CONNECTING
-            val title = if (appState == ServiceState.PAUSED) "戒律已暂停" else "戒律未生效"
-            val message = if (connecting) "无障碍服务正在连接，连接后戒律才会生效。"
-                else "开启无障碍服务后，戒律才会生效。"
-            addView(copyText(title, 15f, WARNING, true))
-            addView(copyText(message, 14f, WARNING))
-            addView(button(if (connecting) "检查服务" else "去开启") { requestPermission() }.apply {
-                setTextColor(WARNING)
-            })
-            addView(button("查看开启帮助", soft = true) { helpOrigin = page; go(Page.HELP) }.apply { setTextColor(WARNING) })
+        if (setupMissing().isNotEmpty()) content.addView(card(3).apply {
+            addView(copyText("配置未完成", 15f, NIGHT_GOLD, true))
+            addView(copyText(setupMissing().joinToString("\n"), 14f, NIGHT_TEXT))
+            addView(button("完成必要设置", primary = true) { go(Page.BACKGROUND) })
         })
         if (store.rules.isEmpty()) {
             content.addView(column(8).apply {
@@ -551,6 +555,11 @@ class MainActivity : Activity() {
     }
 
     private fun openPicker(replacing: String? = null) {
+        if (setupMissing().isNotEmpty()) {
+            go(Page.BACKGROUND)
+            return
+        }
+
         replacingId = replacing
         pickerReturn = if (replacing == null) Page.RULES else Page.DETAIL
         targets = eligibleTargets()
@@ -714,7 +723,17 @@ class MainActivity : Activity() {
     }
 
     private fun settings() {
-        content.addView(heading("设置"))
+        content.addView(heading("设置").apply {
+            if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                setOnLongClickListener {
+                    awaitingFirstConnection = false
+                    go(Page.WELCOME)
+                    toast("已打开欢迎流程，现有戒律与授权保留")
+                    true
+                }
+            }
+        })
+        content.addView(copyText(setupStatus(), 14f, NIGHT_MUTED))
         content.addView(column(6).apply {
             divider(this, NIGHT_LINE)
             addView(row().apply {
@@ -742,6 +761,7 @@ class MainActivity : Activity() {
         up()
         val profile = backgroundProfile()
         content.addView(heading(profile.title))
+        content.addView(copyText(setupStatus(), 14f, NIGHT_MUTED))
         content.addView(copyText("第 2 步 · 允许后台运行，帮助戒律在划掉最近任务后持续执行。请按下面的指引完成系统设置。", 14f, NIGHT_MUTED))
         if (appState != ServiceState.ON) {
             content.addView(button("开启无障碍服务", soft = true) {
@@ -761,7 +781,22 @@ class MainActivity : Activity() {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
         content.addView(copyText("完成设置后，返回这里确认无障碍服务已连接，再尝试划掉最近任务并打开受限 App 检查禁用。强行停止应用后，需要重新打开应用并检查无障碍服务。", 14f, NIGHT_MUTED))
+        content.addView(copyText("厂商设置无法自动读取。请检查后台活动、自启动和任务锁定中系统提供的选项，再确认。", 14f, NIGHT_MUTED))
+        content.addView(button("我已核对厂商后台设置", soft = true) {
+            prototypeSettings().edit().putBoolean("background_confirmed", true).apply()
+            render(keepScroll = true)
+        })
+        content.addView(button("重新检查厂商设置", soft = true) {
+            prototypeSettings().edit().putBoolean("background_confirmed", false).apply()
+            if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
+            render(keepScroll = true)
+        })
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
+            if (setupMissing().isNotEmpty()) {
+                toast("请先完成必要设置")
+                render(keepScroll = true)
+                return@button
+            }
             awaitingFirstConnection = false
             if (store.rules.isEmpty()) openPicker() else go(Page.RULES)
         })
