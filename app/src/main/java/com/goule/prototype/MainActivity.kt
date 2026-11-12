@@ -181,7 +181,8 @@ class MainActivity : Activity() {
             Page.RULES -> store.rules.flatMap { listOf(ruleStatus(it, now), remainingUseLabel(it, now)) } + setupStatus()
             Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
-                listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
+                listOf(ruleStatus(it, now), remainingUseLabel(it, now),
+                    waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
             }.orEmpty()
             else -> emptyList()
         }
@@ -542,6 +543,7 @@ class MainActivity : Activity() {
                 addView(tag(ruleStatus(rule, now)))
             })
             addView(durations(rule.useMinutes, rule.blockMinutes))
+            addView(copyText(remainingUseLabel(rule, now), 16f, NIGHT_GOLD, true))
             if (appState != ServiceState.ON && rule.isBlocked(now)) {
                 addView(copyText("服务连接后，禁用至 " + deadlineLabel(checkNotNull(rule.blockedUntil), now)))
             }
