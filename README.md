@@ -10,7 +10,7 @@
 
 斩心魔是一款帮你打断刷屏循环的 Android 工具。你可以为容易刷过头的 App 单独设定可用时长和休息时长。额度用完后，禁用页会拦住继续滑动的动作。休息结束后，要不要再打开，由你决定。
 
-**[下载斩心魔 v0.3.5 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.5/goule-v0.3.5.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.5)
+**[下载斩心魔 v0.3.6 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.6/goule-v0.3.6.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.6)
 
 ## 一条戒律怎么生效
 
@@ -41,9 +41,9 @@
 
 ## 当前版本
 
-v0.3.5 是预发布版。戒律列表与详情页新增每个 App 的剩余可刷时长，显示分钟和秒数，禁用中显示 0 秒，恢复使用后显示新一轮额度。相关功能构建已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）核对页面显示，自动检查与模拟器验证范围见验证手册。
+v0.3.6 是预发布版。修复修改可刷或禁用时长会重置已用时间的问题，本轮始终按首次计时的可刷额度扣减，新可刷时长从下一轮生效。列表和详情的剩余时长使用同一额度。功能构建已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖安装并核对启动、已有戒律显示及服务连接；实际修改和计时边界仍待真机复测。
 
-本机 ColorOS 会在重启后撤销侧载应用的无障碍授权，需要手动重新开启；真实通话挂断后的禁用恢复仍有已知问题。详见 [版本说明](docs/release-v0.3.5.md) 与 [逐项真机结果](docs/oppo-regression-2026-11-11.md)。
+本机 ColorOS 会在重启后撤销侧载应用的无障碍授权，需要手动重新开启；真实通话挂断后的禁用恢复仍有已知问题。详见 [版本说明](docs/release-v0.3.6.md) 与 [逐项真机结果](docs/oppo-regression-2026-11-11.md)。
 
 ## 开发与验证
 
