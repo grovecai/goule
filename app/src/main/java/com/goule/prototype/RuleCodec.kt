@@ -12,11 +12,10 @@ internal fun encodeRules(rules: List<Rule>): String = JSONArray().apply {
             put("block", rule.blockMinutes)
             put("created", rule.createdAt)
             put("edited", rule.editedAt ?: JSONObject.NULL)
-            put("usage", JSONArray().apply {
-                rule.usage.forEach { span -> put(JSONArray().put(span.start).put(span.end)) }
-            })
-            put("activeUse", rule.activeUseMinutes ?: JSONObject.NULL)
-            put("activeBlock", rule.activeBlockMinutes ?: JSONObject.NULL)
+            put("cycleStart", rule.cycleStart ?: JSONObject.NULL)
+            put("used", rule.usedMs)
+            put("cycleUse", rule.activeUseMinutes ?: JSONObject.NULL)
+            put("cycleBlock", rule.activeBlockMinutes ?: JSONObject.NULL)
             put("from", rule.blockedFrom ?: JSONObject.NULL)
             put("legacyUntil", rule.legacyBlockedUntil ?: JSONObject.NULL)
             put("accountedUntil", rule.accountedUntil ?: JSONObject.NULL)
@@ -24,7 +23,7 @@ internal fun encodeRules(rules: List<Rule>): String = JSONArray().apply {
     }
 }.toString()
 
-/** savedTime is the last committed rule clock, NOT the time at which the app is reopened. */
+/** Migration anchors use the last saved rule clock so reopening never restarts a cycle. */
 internal fun decodeRules(raw: String?, savedTime: Long? = null): List<Rule> {
     if (raw == null) return emptyList()
     val array = JSONArray(raw)
@@ -35,27 +34,34 @@ internal fun decodeRules(raw: String?, savedTime: Long? = null): List<Rule> {
         val block = item.getInt("block")
         val created = item.getLong("created")
         val from = optional("from")
-        if (item.has("usage")) {
-            val spans = item.getJSONArray("usage")
+        if (item.has("cycleStart")) {
             Rule(item.getString("package"), item.getString("label"), use, block, created,
-                optional("edited"), List(spans.length()) { i ->
-                    val span = spans.getJSONArray(i)
-                    UsageSpan(span.getLong(0), span.getLong(1))
-                }, optional("activeUse")?.toInt(), optional("activeBlock")?.toInt(), from,
+                optional("edited"), optional("cycleStart"), item.getLong("used"),
+                optional("cycleUse")?.toInt(), optional("cycleBlock")?.toInt(), from,
                 optional("legacyUntil"), optional("accountedUntil"))
         } else {
-            // The legacy aggregate has no segment timestamps. Place it as late as possible
-            // rather than inventing an early expiry and granting unearned quota on upgrade.
-            val quota = optional("windowUse")?.toInt() ?: use
-            val used = item.optLong("used", 0).coerceIn(0, quota * MINUTE)
-            val until = optional("until")
-            val earliestEnd = (optional("window") ?: created) + used
-            val end = maxOf(earliestEnd, if (until != null) from ?: (until - block * MINUTE)
-                else savedTime ?: earliestEnd)
+            val rolling = item.has("usage")
+            val activeUse = (optional(if (rolling) "activeUse" else "windowUse")?.toInt() ?: use)
+            val activeBlock = (optional("activeBlock")?.toInt() ?: block)
+            val period = (activeUse + activeBlock) * MINUTE
+            val spans = item.optJSONArray("usage")
+            val used = (if (spans != null) (0 until spans.length()).sumOf { i ->
+                val span = spans.getJSONArray(i)
+                span.getLong(1) - span.getLong(0)
+            } else item.optLong("used", 0)).coerceIn(0, activeUse * MINUTE)
+            val until = optional(if (rolling) "legacyUntil" else "until")
+            val oldStart = if (spans != null && spans.length() > 0) spans.getJSONArray(0).getLong(0)
+                else optional("window")
+            val saved = savedTime ?: optional("accountedUntil") ?: oldStart ?: created
+            // If rolling release was already underway, retain the currently saved aggregate
+            // in one new fixed cycle instead of immediately granting a fresh quota.
+            val anchor = if (used > 0 || until != null) {
+                oldStart?.takeIf { it + period > saved } ?: saved
+            } else null
             Rule(item.getString("package"), item.getString("label"), use, block, created,
-                optional("edited"), if (used > 0) listOf(UsageSpan(end - used, end)) else emptyList(),
-                quota.takeIf { used > 0 || until != null }, block.takeIf { used > 0 || until != null },
-                from, until, savedTime ?: end)
+                optional("edited"), anchor, used, activeUse.takeIf { anchor != null },
+                activeBlock.takeIf { anchor != null }, from, until,
+                optional("accountedUntil") ?: savedTime)
         }
     }
 }

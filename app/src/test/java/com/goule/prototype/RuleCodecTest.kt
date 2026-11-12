@@ -10,86 +10,107 @@ class RuleCodecTest {
     private fun at(minutes: Long) = start + minutes * MINUTE
 
     @Test
-    fun saveAndReloadPreserveSegmentsPolicyDeadlinesAndEachAppsQuota() {
-        val first = Rule("a", "甲", 10, 120, start).record(5 * MINUTE, at(5))
-            .record(5 * MINUTE, at(65)).edit(5, 15, at(66))
-        val second = Rule("b", "乙", 10, 30, start).record(MINUTE, at(100))
-        val restored = decodeRules(encodeRules(listOf(first, second)))
-        assertEquals(listOf(first, second), restored)
-        assertEquals(at(130), restored[0].blockedUntil)
-        assertEquals(MINUTE, restored[0].remainingUseMs(at(131)))
-        assertEquals(5 * MINUTE, restored[0].remainingUseMs(at(135)))
-        assertEquals(9 * MINUTE, restored[1].remainingUseMs(at(135)))
-        assertEquals(5 * MINUTE, restored[0].remainingUseMs(at(195)))
-        // Re-delivery of the last interval after restart is idempotent.
-        assertEquals(first, restored[0].record(5 * MINUTE, at(65)))
+    fun savedRulesRestoreCycleUsageSnapshotsAndIndependentResetTimes() {
+        val first = Rule("a", "甲", 10, 120, start).record(8 * MINUTE, at(8)).edit(5, 15, at(9))
+        val second = Rule("b", "乙", 2, 15, start).record(MINUTE, at(41))
+        val loaded = decodeRules(encodeRules(listOf(first, second)))
+        assertEquals(listOf(first, second), loaded)
+        assertEquals(2 * MINUTE, loaded[0].remainingUseMs(at(129)))
+        assertEquals(5 * MINUTE, loaded[0].remainingUseMs(at(130)))
+        assertEquals(at(57), loaded[1].cycleEnd)
+        assertEquals(MINUTE, loaded[1].remainingUseMs(at(56)))
+        assertEquals(first, loaded[0].record(8 * MINUTE, at(8)))
     }
 
     @Test
-    fun legacyAggregateMigratesAtLastSaveRatherThanOldWindowStartOrReopenTime() {
-        val legacy = """[{"package":"a","label":"甲","use":10,"block":120,
-            "created":$start,"edited":null,"window":$start,"used":${5 * MINUTE},
-            "from":null,"until":null}]"""
-        val loaded = decodeRules(legacy, at(60)).single()
-        assertEquals(listOf(UsageSpan(at(55), at(60))), loaded.usage)
-        assertEquals(5 * MINUTE, loaded.remainingUseMs(at(130)))
-        assertEquals(6 * MINUTE, loaded.remainingUseMs(at(186)))
-        assertEquals(10 * MINUTE, loaded.remainingUseMs(at(190)))
-        val restored = decodeRules(encodeRules(listOf(loaded)), at(180)).single()
-        assertEquals(loaded, restored)
-        assertEquals(5 * MINUTE, restored.remainingUseMs(at(180)))
-        assertEquals(loaded.usage, loaded.edit(5, 15, at(61)).usage)
-    }
-
-    @Test
-    fun legacyQuotaSnapshotAndExistingDeadlineArePreservedIncludingZeroAggregate() {
-        val legacy = """[{"package":"a","label":"甲","use":5,"block":15,
-            "created":$start,"edited":${at(11)},"window":$start,"used":${10 * MINUTE},
-            "windowUse":10,"from":${at(10)},"until":${at(130)}}]"""
-        val loaded = decodeRules(legacy, at(12)).single()
-        assertEquals(10, loaded.activeUseMinutes)
+    fun rollingSegmentsBecomeOneStableAggregateAndKeepCurrentDeadline() {
+        val raw = rolling("[[${at(0)},${at(5)}],[${at(60)},${at(65)}]]")
+        val loaded = decodeRules(raw, at(65)).single()
+        assertEquals(10 * MINUTE, loaded.usedMs)
+        assertEquals(start, loaded.cycleStart)
         assertEquals(at(130), loaded.blockedUntil)
-        assertEquals(0L, loaded.remainingUseMs(at(100)))
-        assertEquals(5 * MINUTE, loaded.remainingUseMs(at(130)))
-        val zero = decodeRules(legacy.replace("\"used\":${10 * MINUTE}", "\"used\":0"), at(12)).single()
-        assertTrue(zero.usage.isEmpty())
-        assertTrue(zero.isBlocked(at(129)))
-        assertEquals(0L, zero.remainingUseMs(at(129)))
-        assertEquals(5 * MINUTE, zero.remainingUseMs(at(130)))
+        assertEquals(0L, loaded.remainingUseMs(at(129)))
+        assertEquals(10 * MINUTE, loaded.remainingUseMs(at(130)))
+        assertEquals(loaded, decodeRules(encodeRules(listOf(loaded))).single())
     }
 
     @Test
-    fun legacyFixedBlockWithUnchangedParametersTransitionsToGradualRecovery() {
-        val legacy = """[{"package":"a","label":"甲","use":10,"block":120,
-            "created":$start,"window":$start,"used":${10 * MINUTE},
-            "from":${at(10)},"until":${at(130)}}]"""
-        val loaded = decodeRules(legacy, at(100)).single()
-        assertEquals(at(130), loaded.blockedUntil)
-        assertEquals(0L, loaded.remainingUseMs(at(130)))
-        assertEquals(MINUTE, loaded.remainingUseMs(at(131)))
+    fun rollingReleaseAlreadyUnderwayRetainsSavedQuotaInNewFixedCycle() {
+        val raw = rolling("[[${at(5)},${at(10)}],[${at(60)},${at(65)}]]", activeUse = 20)
+        // Use a saved time at the old first-release boundary; existing aggregate is retained.
+        val loaded = decodeRules(raw, at(145)).single()
+        assertEquals(at(145), loaded.cycleStart)
+        assertEquals(10 * MINUTE, loaded.usedMs)
+        for (minute in 145L..284L) assertEquals(10 * MINUTE, loaded.remainingUseMs(at(minute)))
+        val restored = decodeRules(encodeRules(listOf(loaded)), at(200)).single()
+        assertEquals(loaded.cycleStart, restored.cycleStart)
+        assertEquals(10 * MINUTE, restored.remainingUseMs(at(200)))
+        assertEquals(10 * MINUTE, restored.remainingUseMs(at(285))) // configured quota becomes 10
+    }
+
+    @Test
+    fun rollingZeroUsageWithLegacyBlockKeepsItsRestriction() {
+        val raw = rolling("[]", until = at(160))
+        val loaded = decodeRules(raw, at(100)).single()
+        assertEquals(at(100), loaded.cycleStart)
+        assertTrue(loaded.isBlocked(at(159)))
+        assertEquals(0L, loaded.remainingUseMs(at(159)))
+        assertEquals(10 * MINUTE, loaded.remainingUseMs(at(160)))
+    }
+
+    @Test
+    fun olderAggregateUsesOriginalAnchorIfStillValidAndPreservesQuotaSnapshot() {
+        val raw = legacy(8 * MINUTE, quota = 20)
+        val loaded = decodeRules(raw, at(60)).single()
+        assertEquals(start, loaded.cycleStart)
+        assertEquals(20, loaded.activeUseMinutes)
+        assertEquals(at(140), loaded.cycleEnd)
+        assertEquals(12 * MINUTE, loaded.remainingUseMs(at(139)))
         assertEquals(10 * MINUTE, loaded.remainingUseMs(at(140)))
     }
 
     @Test
-    fun missingLegacyClockFallsBackWithoutDiscardingUsage() {
-        val legacy = """[{"package":"a","label":"甲","use":10,"block":120,
-            "created":$start,"window":$start,"used":${5 * MINUTE}}]"""
-        val loaded = decodeRules(legacy).single()
-        assertEquals(listOf(UsageSpan(start, at(5))), loaded.usage)
-        assertEquals(5 * MINUTE, loaded.remainingUseMs(at(5)))
+    fun olderStaleAnchorDoesNotClearSavedPartialQuotaOnModelSwitch() {
+        val loaded = decodeRules(legacy(5 * MINUTE), at(400)).single()
+        assertEquals(at(400), loaded.cycleStart)
+        assertEquals(5 * MINUTE, loaded.remainingUseMs(at(401)))
+        assertEquals(at(530), loaded.cycleEnd)
+        assertEquals(10 * MINUTE, loaded.remainingUseMs(at(530)))
     }
 
     @Test
-    fun emptyAndExpiredHistoryRoundTripWithoutRevivingLegacyAggregates() {
+    fun olderExistingBlockIsNeverShortenedByNewCycle() {
+        val raw = legacy(10 * MINUTE, until = at(200))
+        val loaded = decodeRules(raw, at(60)).single()
+        assertEquals(at(200), loaded.blockedUntil)
+        assertEquals(0L, loaded.remainingUseMs(at(130)))
+        assertEquals(0L, loaded.remainingUseMs(at(199)))
+        assertEquals(10 * MINUTE, loaded.remainingUseMs(at(200)))
+    }
+
+    @Test
+    fun unusedAndResetRulesRoundTripWithoutLosingPhaseOrRecountingOldIntervals() {
         val rule = Rule("a", "甲", 10, 120, start)
         assertEquals(listOf(rule), decodeRules(encodeRules(listOf(rule))))
-        val refreshed = rule.record(MINUTE, at(1)).edit(5, 15, at(2)).refresh(at(131))
+        val refreshed = rule.record(MINUTE, at(1)).refresh(at(391))
         val restored = decodeRules(encodeRules(listOf(refreshed))).single()
         assertEquals(refreshed, restored)
-        assertNull(restored.activeUseMinutes)
-        assertNull(restored.activeBlockMinutes)
-        assertEquals(5 * MINUTE, restored.remainingUseMs(at(131)))
-        assertEquals(refreshed, restored.record(MINUTE, at(1)))
+        assertEquals(at(390), restored.cycleStart)
+        assertEquals(at(520), restored.cycleEnd)
+        assertEquals(refreshed, restored.record(MINUTE, at(100)))
+        val unusedRolling = decodeRules(rolling("[]"), at(400)).single()
+        assertNull(unusedRolling.cycleStart)
+        assertEquals(10 * MINUTE, unusedRolling.remainingUseMs(at(400)))
         assertEquals(emptyList<Rule>(), decodeRules(null))
     }
+
+    private fun rolling(spans: String, activeUse: Int = 10, until: Long? = null) = """[{
+        "package":"a","label":"甲","use":10,"block":120,"created":$start,
+        "usage":$spans,"activeUse":$activeUse,"activeBlock":120,
+        "from":null,"legacyUntil":${until ?: "null"},"accountedUntil":${at(65)}}]"""
+
+    private fun legacy(used: Long, quota: Int? = null, until: Long? = null) = """[{
+        "package":"a","label":"甲","use":10,"block":120,"created":$start,
+        "window":$start,"used":$used,"windowUse":${quota ?: "null"},
+        "from":null,"until":${until ?: "null"}}]"""
 }

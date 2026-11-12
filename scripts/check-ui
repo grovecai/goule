@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+: "${GOULE_UI_DEVICE:?Set GOULE_UI_DEVICE to an authorized adb serial}"
+goule_adb="${ANDROID_HOME:?Set ANDROID_HOME}/platform-tools/adb"
+goule_fixture="com.goule.uiverify"
+if "$goule_adb" -s "$GOULE_UI_DEVICE" shell pm path "$goule_fixture" | rg -q '^package:'; then
+    echo "Reserved UI fixture is already installed; remove that test package before running." >&2
+    exit 1
+fi
+./gradlew -PverificationApplicationId="$goule_fixture" assembleDebug assembleDebugAndroidTest
+cleanup() {
+    "$goule_adb" -s "$GOULE_UI_DEVICE" uninstall "$goule_fixture.test" >/dev/null 2>&1 || true
+    "$goule_adb" -s "$GOULE_UI_DEVICE" uninstall "$goule_fixture" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+"$goule_adb" -s "$GOULE_UI_DEVICE" install --no-incremental -r app/build/outputs/apk/debug/app-debug.apk
+"$goule_adb" -s "$GOULE_UI_DEVICE" install --no-incremental -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+goule_result=$("$goule_adb" -s "$GOULE_UI_DEVICE" shell am instrument -w "$goule_fixture.test/com.goule.prototype.PageRefreshInstrumentation")
+printf '%s\n' "$goule_result"
+[[ "$goule_result" == *"PASS: list/detail fixed resets"* &&
+   "$goule_result" != *"INSTRUMENTATION_FAILED"* && "$goule_result" != *"FAIL:"* ]]

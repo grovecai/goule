@@ -18,6 +18,6 @@ internal fun usageWindowLabel(rule: Rule, now: Long): String {
     val use = current.activeUseMinutes ?: current.useMinutes
     val block = current.activeBlockMinutes ?: current.blockMinutes
     val pending = use != current.useMinutes || block != current.blockMinutes
-    return "任意连续 ${use + block} 分钟内，最多刷 $use 分钟。" +
-        if (pending) "新时长待有效用量全部过期后生效。" else "旧用量过期后逐步恢复额度。"
+    return "每 ${use + block} 分钟重置一次，可刷 $use 分钟。" +
+        if (pending) "新时长从下一周期生效。" else "周期内分段累计，用满后等到重置。"
 }

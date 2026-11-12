@@ -59,6 +59,7 @@ class MainActivity : Activity() {
     private var pickerReturn = Page.RULES
     private var appState = ServiceState.OFF
     private var visibleSignature = emptyList<String>()
+    private val liveTextUpdates = mutableListOf<() -> Unit>()
     private lateinit var root: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var content: LinearLayout
@@ -154,6 +155,7 @@ class MainActivity : Activity() {
         if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND, Page.PERMISSION) &&
             (targetsChanged || previous != appState || visibleSignature != signature())
         ) render(keepScroll = true)
+        else liveTextUpdates.forEach { it() }
     }
 
     private fun setupMissing(): List<String> = buildList {
@@ -169,11 +171,13 @@ class MainActivity : Activity() {
     private fun signature(): List<String> {
         val now = store.now()
         return when (page) {
-            Page.RULES -> store.rules.flatMap { listOf(ruleStatus(it, now), remainingUseLabel(it, now)) } + setupStatus()
+            Page.RULES -> store.rules.flatMap {
+                listOf(it.packageName, it.label, it.useMinutes.toString(), it.blockMinutes.toString(), ruleStatus(it, now))
+            } + setupStatus()
             Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
-                listOf(ruleStatus(it, now), remainingUseLabel(it, now), usageWindowLabel(it, now),
-                    waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString(), setupStatus())
+                listOf(ruleStatus(it, now), usageWindowLabel(it, now),
+                    (it.editWait(now) == 0L).toString(), (it.removeWait(now) == 0L).toString(), setupStatus())
             }.orEmpty()
             else -> emptyList()
         }
@@ -189,6 +193,7 @@ class MainActivity : Activity() {
 
     private fun render(keepScroll: Boolean = false) {
         val oldY = if (keepScroll) scroll.scrollY else 0
+        liveTextUpdates.clear()
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = when (page) {
@@ -248,6 +253,17 @@ class MainActivity : Activity() {
             if (childCount > 1 && gap > 0) (child.layoutParams as LayoutParams).topMargin = dp(gap)
         }
     }.apply { orientation = LinearLayout.VERTICAL }
+
+    /** Keep the current view tree and scroll position while a timer label changes. */
+    private fun liveText(size: Float, color: Int, bold: Boolean = false, value: () -> String): TextView =
+        copyText(value(), size, color, bold).also { view ->
+            liveTextUpdates.add {
+                val next = value()
+                if (view.text.toString() != next) view.text = next
+            }
+        }
+
+    private fun latest(rule: Rule) = store.rules.find { it.packageName == rule.packageName } ?: rule
 
     private fun row() = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
 
@@ -455,7 +471,7 @@ class MainActivity : Activity() {
                     addView(appRow(rule.packageName, rule.label, ruleStatus(rule, now), NIGHT_TEXT))
                     addView(durations(rule.useMinutes, rule.blockMinutes, NIGHT_TEXT, inline = true),
                         LinearLayout.LayoutParams(-1, -2).apply { marginStart = dp(48) })
-                    addView(copyText(remainingUseLabel(rule, now), 14f, NIGHT_GOLD, true),
+                    addView(liveText(14f, NIGHT_GOLD, true) { remainingUseLabel(latest(rule), store.now()) },
                         LinearLayout.LayoutParams(-1, -2).apply { marginStart = dp(48) })
                 })
                 divider(this, NIGHT_LINE)
@@ -536,8 +552,13 @@ class MainActivity : Activity() {
                 addView(tag(ruleStatus(rule, now)))
             })
             addView(durations(rule.useMinutes, rule.blockMinutes))
-            addView(copyText(remainingUseLabel(rule, now), 16f, NIGHT_GOLD, true))
+            addView(liveText(16f, NIGHT_GOLD, true) { remainingUseLabel(latest(rule), store.now()) })
             addView(copyText(usageWindowLabel(rule, now), 14f, NIGHT_MUTED))
+            addView(liveText(14f, NIGHT_MUTED) {
+                val time = store.now()
+                latest(rule).refresh(time).cycleEnd?.let { "下次重置：" + deadlineLabel(it, time) }
+                    ?: "首次使用时开始周期"
+            })
             if (appState != ServiceState.ON && rule.isBlocked(now)) {
                 addView(copyText("服务连接后，禁用至 " + deadlineLabel(checkNotNull(rule.blockedUntil), now)))
             }
@@ -552,12 +573,16 @@ class MainActivity : Activity() {
         content.addView(button(if (missing) "重新选择心魔" else "修改戒律") {
             if (missing) openPicker(rule.packageName) else openForm(rule.packageName, rule)
         }.apply { isEnabled = editWait == 0L; if (!isEnabled) alpha = .55f })
-        if (editWait > 0) content.addView(copyText("再等 ${waitMinutes(editWait)} 分钟可修改。", 14f, NIGHT_MUTED))
+        if (editWait > 0) content.addView(liveText(14f, NIGHT_MUTED) {
+            "再等 ${waitMinutes(latest(rule).editWait(store.now()))} 分钟可修改。"
+        })
         content.addView(button("移除戒律") { confirmRemove(rule.packageName) }.apply {
             isEnabled = removeWait == 0L
             if (isEnabled) setTextColor(NIGHT_ERROR) else alpha = .55f
         })
-        if (removeWait > 0) content.addView(copyText("再等 ${waitMinutes(removeWait)} 分钟可移除。", 14f, NIGHT_MUTED))
+        if (removeWait > 0) content.addView(liveText(14f, NIGHT_MUTED) {
+            "再等 ${waitMinutes(latest(rule).removeWait(store.now()))} 分钟可移除。"
+        })
     }
 
     private fun confirmRemove(id: String) {
@@ -665,7 +690,7 @@ class MainActivity : Activity() {
         content.addView(card().apply {
             addView(preview)
             if (editing) {
-                addView(copyText("保留已记录用量、原可刷额度和窗口长度。有效用量全部过期后，新时长生效。", 14f, NIGHT_MUTED))
+                addView(copyText("保留本周期已用时间、可刷额度和重置时间。新时长从下一周期生效。", 14f, NIGHT_MUTED))
             }
         })
         val error = copyText("", 14f, NIGHT_ERROR).apply {
@@ -675,7 +700,7 @@ class MainActivity : Activity() {
         content.addView(error)
         fun showPreview() {
             preview.text = if (draftUse.toIntOrNull() in 1..180 && draftBlock.toIntOrNull() in 15..180)
-                "任意连续 ${draftUse.toInt() + draftBlock.toInt()} 分钟内，最多刷 $draftUse 分钟。旧用量过期后逐步恢复额度。"
+                "每 ${draftUse.toInt() + draftBlock.toInt()} 分钟重置一次，可刷 $draftUse 分钟。周期内分段累计，用满后等到重置。"
             else "填写时长后查看戒律预览。"
         }
         use.onText { draftUse = it; dirty = true; use.error = null; error.text = ""; error.visibility = View.GONE; showPreview() }

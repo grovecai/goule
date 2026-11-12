@@ -8,11 +8,12 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.goule.prototype"
+        applicationId = providers.gradleProperty("verificationApplicationId").orElse("com.goule.prototype").get()
         minSdk = 30
         targetSdk = 35
         versionCode = 9
         versionName = "0.3.6"
+        testInstrumentationRunner = "com.goule.prototype.PageRefreshInstrumentation"
     }
 
     compileOptions {

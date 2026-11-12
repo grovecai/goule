@@ -11,4 +11,8 @@ if [[ ! -x gradlew ]]; then
     echo "Android checks require an executable Gradle Wrapper at ./gradlew." >&2
     exit 1
 fi
-./gradlew check assembleDebug
+./gradlew check assembleDebug assembleDebugAndroidTest
+
+if [[ -n "${GOULE_UI_DEVICE:-}" ]]; then
+    ./scripts/check-ui
+fi
