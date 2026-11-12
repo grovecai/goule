@@ -55,6 +55,14 @@ OPPO PLJ110，Android 16、ColorOS 16.1.0，系统构建 `PLJ110_16.0.10.502(CN0
 
 设备 base.apk 与本地签名 APK 的 SHA-256 一致：`f1b662756bad06c67537d6fb8121e5d170804399529fbe18758f390eb8fbd07b`。未替换 GitHub 发布资产。详情禁用到期、24 小时刷新及短屏/大字号的实机显示未在本轮复测，不以共享计算测试代替页面完整验收。
 
+## v0.3.6 发布包验证（2026-11-12）
+
+版本 0.3.6/versionCode 9，包名 com.goule.prototype，最低 Android 11（API 30），源代码提交 f65f2c33cc1e6cb9f14325326e505c664817afc4。`./scripts/check` 通过，Debug/Release 各 23 项单元测试零失败/错误/跳过，Lint、Debug 及 Release 构建通过。apksigner、aapt 版本元数据与 zipalign 校验通过；从 GitHub v0.3.5 重新下载的发布 APK 与新包证书 SHA-256 一致，沿用原签名。
+
+资产 `goule-v0.3.6.apk` 为 3,926,127 字节，SHA-256：`1a4754254777090d026b187ccd5f9c4df676125a6ab86528e09ca29adfae37cc`；附 `goule-v0.3.6.apk.sha256`，83 字节。2026-11-12 21:16（北京时间）[GitHub v0.3.6](https://github.com/grovecai/goule/releases/tag/v0.3.6) 发布完成，非草稿且为预发布；远程标签及发布目标均指向上述提交，资产仅包含 APK 与对应校验文件。回下载两项资产与本地逐字节一致，GitHub asset digest、文件大小及校验文件中的 APK 摘要全部匹配。
+
+OPPO PLJ110（Android 16、ColorOS 16.1.0）的本次修复功能构建安装/启动/列表/绑定记录来自 72a7263、0.3.5/code 8，见上文。本轮没有另装 0.3.6/code 9 版本包，没有重做实际修改、锁屏或计时禁用真机回归，相关待验证项及既有已知问题保留。
+
 ## v0.3.5 发布包验证（2026-11-12）
 
 版本 0.3.5/versionCode 8，包名 com.goule.prototype，最低 Android 11（API 30）。`./scripts/check` 通过，Debug/Release 各 12 项单元测试无失败，Lint 和 Debug 构建通过；assembleRelease 通过。apksigner、ZIP 对齐和 aapt 元数据核对通过。重新从 GitHub 下载 v0.3.4 发布 APK，确认新包的发布证书 SHA-256 一致。
