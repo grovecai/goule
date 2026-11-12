@@ -665,8 +665,11 @@ class MainActivity : Activity() {
         val preview = copyText("")
         content.addView(card().apply {
             addView(preview)
-            if (editing && currentRule()?.isBlocked(store.now()) == true) {
-                addView(copyText("保留本次禁用截止时间，新时长从下一轮生效。", 14f, NIGHT_MUTED))
+            if (editing) {
+                val hint = if (currentRule()?.isBlocked(store.now()) == true)
+                    "保留本次禁用截止时间，新时长从下一轮生效。"
+                else "本轮开始计时后，保留已用时间和原可刷额度，新可刷时长从下一轮生效。禁用时长用于下次禁用。"
+                addView(copyText(hint, 14f, NIGHT_MUTED))
             }
         })
         val error = copyText("", 14f, NIGHT_ERROR).apply {

@@ -179,7 +179,7 @@ class FreezeService : AccessibilityService() {
 
         if (rule != null) {
             val delay = if (deadline != null && overlay == null) 1_000L else if (deadline != null) deadline - now else
-                (rule.useMinutes * MINUTE - rule.usedMs).coerceIn(1, 1_000)
+                rule.remainingUseMs(now).coerceIn(1, 1_000)
             handler.postDelayed(tick, delay)
         }
     }

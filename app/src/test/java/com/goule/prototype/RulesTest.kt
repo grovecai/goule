@@ -38,7 +38,7 @@ class RulesTest {
         assertEquals(MINUTE, partial.remainingUseMs(start + DAY))
         val blocked = partial.record(40_000, start + DAY - 1)
         assertEquals(0L, blocked.remainingUseMs(start + DAY))
-        assertEquals(MINUTE, partial.edit(1, 30, start + HOUR).remainingUseMs(start + HOUR))
+        assertEquals(40_000L, partial.edit(1, 30, start + HOUR).remainingUseMs(start + HOUR))
     }
 
     @Test
@@ -76,6 +76,98 @@ class RulesTest {
         assertEquals(1L, edited.editWait(start + 7 * MINUTE - 1))
         assertEquals(0L, edited.editWait(start + 7 * MINUTE))
         assertEquals(edited, edited.edit(2, 25, start + 8 * MINUTE))
+    }
+
+    @Test
+    fun changingOnlyBlockDurationPreservesUsageAndWindowThenUsesNewBlockDuration() {
+        val partial = rule().record(20_000, start + 20_000)
+        val edited = partial.edit(1, 30, start + MINUTE)
+        assertEquals(partial.windowStart, edited.windowStart)
+        assertEquals(partial.usedMs, edited.usedMs)
+        assertEquals(40_000L, edited.remainingUseMs(start + MINUTE))
+        val blocked = edited.record(40_500, start + 2 * MINUTE)
+        assertEquals(start + 2 * MINUTE - 500, blocked.blockedFrom)
+        assertEquals(30 * MINUTE, checkNotNull(blocked.blockedUntil) - checkNotNull(blocked.blockedFrom))
+    }
+
+    @Test
+    fun increasingQuotaDoesNotExtendCurrentRoundAndNextRoundUsesLatestQuota() {
+        val partial = Rule("a", "a", 20, 30, start).record(8 * MINUTE, start + 8 * MINUTE)
+        val edited = partial.edit(40, 30, start + 9 * MINUTE)
+        assertEquals(12 * MINUTE, edited.remainingUseMs(start + 9 * MINUTE))
+        val blocked = edited.record(12 * MINUTE, start + 21 * MINUTE)
+        assertEquals(start + 21 * MINUTE, blocked.blockedFrom)
+        val until = checkNotNull(blocked.blockedUntil)
+        assertEquals(40 * MINUTE, blocked.remainingUseMs(until))
+        val next = blocked.record(MINUTE, until + MINUTE)
+        assertEquals(40, next.windowUseMinutes)
+        assertEquals(39 * MINUTE, next.remainingUseMs(until + MINUTE))
+    }
+
+    @Test
+    fun decreasingQuotaBelowUsedTimeStillFinishesOriginalRound() {
+        val partial = Rule("a", "a", 20, 30, start).record(8 * MINUTE, start + 8 * MINUTE)
+        val edited = partial.edit(5, 15, start + 9 * MINUTE)
+        assertEquals(12 * MINUTE, edited.remainingUseMs(start + 9 * MINUTE))
+        assertFalse(edited.isBlocked(start + 9 * MINUTE))
+        val blocked = edited.record(12 * MINUTE, start + 21 * MINUTE)
+        assertEquals(start + 21 * MINUTE, blocked.blockedFrom)
+        assertEquals(5 * MINUTE, blocked.remainingUseMs(checkNotNull(blocked.blockedUntil)))
+    }
+
+    @Test
+    fun repeatedEditsKeepEarliestQuotaAndDoNotTouchAnotherApp() {
+        val partial = rule().record(20_000, start + 20_000)
+        val other = rule("b").record(10_000, start + 10_000)
+        val edited = partial.edit(2, 30, start + MINUTE)
+            .record(10_000, start + 2 * MINUTE)
+            .edit(3, 45, start + 6 * MINUTE)
+        assertEquals(1, edited.windowUseMinutes)
+        assertEquals(start, edited.windowStart)
+        assertEquals(30_000L, edited.remainingUseMs(start + 6 * MINUTE))
+        assertEquals(50_000L, other.remainingUseMs(start + 6 * MINUTE))
+        assertEquals(edited, edited.edit(3, 45, start + 7 * MINUTE))
+    }
+
+    @Test
+    fun editsDoNotMoveDayBoundaryAndRolloverUsesLatestQuota() {
+        val edited = rule().record(20_000, start + 20_000).edit(2, 30, start + HOUR)
+        assertEquals(40_000L, edited.remainingUseMs(start + DAY - 1))
+        assertEquals(2 * MINUTE, edited.remainingUseMs(start + DAY))
+        val rollover = edited.record(1_000, start + DAY + 400)
+        assertEquals(start + DAY, rollover.windowStart)
+        assertEquals(400L, rollover.usedMs)
+        assertEquals(2, rollover.windowUseMinutes)
+        val almostFull = edited.copy(usedMs = MINUTE - 300)
+        val blocked = almostFull.record(1_000, start + DAY + 400)
+        assertEquals(start + DAY - 300, blocked.blockedFrom)
+        assertEquals(0L, blocked.remainingUseMs(start + DAY + 400))
+    }
+
+    @Test
+    fun editingBeforeFirstUseOrAfterExpiryUsesLatestQuotaImmediately() {
+        val unused = rule().edit(2, 30, start + MINUTE)
+        assertNull(unused.windowUseMinutes)
+        assertEquals(2 * MINUTE, unused.remainingUseMs(start + MINUTE))
+        val first = unused.record(10_000, start + 2 * MINUTE)
+        assertEquals(2, first.windowUseMinutes)
+        val expired = rule().record(MINUTE, start + MINUTE)
+            .edit(3, 30, start + HOUR)
+        assertEquals(3 * MINUTE, expired.remainingUseMs(start + HOUR))
+        assertNull(expired.windowUseMinutes)
+        val dayExpired = rule().record(20_000, start + 20_000).edit(4, 30, start + DAY)
+        assertEquals(4 * MINUTE, dayExpired.remainingUseMs(start + DAY))
+        assertNull(dayExpired.windowStart)
+    }
+
+    @Test
+    fun legacyInProgressRuleCapturesStoredQuotaBeforeFirstEdit() {
+        val legacy = rule().copy(windowStart = start, usedMs = 20_000)
+        val edited = legacy.edit(2, 30, start + MINUTE)
+        assertEquals(1, edited.windowUseMinutes)
+        assertEquals(40_000L, edited.remainingUseMs(start + MINUTE))
+        assertEquals(start, edited.windowStart)
+        assertEquals(start + 2 * MINUTE, edited.record(40_000, start + 2 * MINUTE).blockedFrom)
     }
 
     @Test

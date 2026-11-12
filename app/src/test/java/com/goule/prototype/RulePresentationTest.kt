@@ -14,4 +14,12 @@ class RulePresentationTest {
         assertEquals("还可刷 0 秒", remainingUseLabel(rule.copy(usedMs = 20 * MINUTE), 0))
         assertEquals("还可刷 0 秒", remainingUseLabel(rule.copy(usedMs = 20 * MINUTE + 1), 0))
     }
+
+    @Test
+    fun quotaLabelUsesOriginalRoundAfterChangingConfiguredDuration() {
+        val edited = Rule("a", "A", 20, 30, 0).record(8 * MINUTE, 8 * MINUTE)
+            .edit(5, 15, 9 * MINUTE)
+        assertEquals("还可刷 12 分钟", remainingUseLabel(edited, 9 * MINUTE))
+        assertEquals("还可刷 5 分钟", remainingUseLabel(edited, DAY))
+    }
 }

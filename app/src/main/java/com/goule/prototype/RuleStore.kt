@@ -3,8 +3,6 @@ package com.goule.prototype
 import android.content.Context
 import android.os.SystemClock
 import android.provider.Settings
-import org.json.JSONArray
-import org.json.JSONObject
 
 /** Activity and service share this store on the process main thread. */
 internal class RuleStore private constructor(context: Context) {
@@ -17,7 +15,7 @@ internal class RuleStore private constructor(context: Context) {
         System.currentTimeMillis(), boot >= 0 && prefs.getInt("boot", -1) == boot,
     )
 
-    var rules: List<Rule> = decode(prefs.getString("items", null))
+    var rules: List<Rule> = decodeRules(prefs.getString("items", null))
         private set
     private var dirty = false
     private var lastWrite = anchorElapsed
@@ -57,22 +55,7 @@ internal class RuleStore private constructor(context: Context) {
             }
             return true
         }
-        val array = JSONArray()
-        items.forEach { rule ->
-            array.put(JSONObject().apply {
-                put("package", rule.packageName)
-                put("label", rule.label)
-                put("use", rule.useMinutes)
-                put("block", rule.blockMinutes)
-                put("created", rule.createdAt)
-                put("edited", rule.editedAt ?: JSONObject.NULL)
-                put("window", rule.windowStart ?: JSONObject.NULL)
-                put("used", rule.usedMs)
-                put("from", rule.blockedFrom ?: JSONObject.NULL)
-                put("until", rule.blockedUntil ?: JSONObject.NULL)
-            })
-        }
-        if (!prefs.edit().putString("items", array.toString()).putLong("clock", now())
+        if (!prefs.edit().putString("items", encodeRules(items)).putLong("clock", now())
                 .putInt("boot", boot).putLong("elapsed", SystemClock.elapsedRealtime()).commit()
         ) return false
         rules = items
@@ -82,18 +65,6 @@ internal class RuleStore private constructor(context: Context) {
     }
 
     fun flush() { if (dirty) change(rules, force = true) }
-
-    private fun decode(raw: String?): List<Rule> {
-        if (raw == null) return emptyList()
-        val array = JSONArray(raw)
-        return List(array.length()) { index ->
-            val item = array.getJSONObject(index)
-            fun optional(key: String) = if (item.isNull(key)) null else item.getLong(key)
-            Rule(item.getString("package"), item.getString("label"), item.getInt("use"),
-                item.getInt("block"), item.getLong("created"), optional("edited"), optional("window"),
-                item.getLong("used"), optional("from"), optional("until"))
-        }
-    }
 
     companion object {
         private var instance: RuleStore? = null

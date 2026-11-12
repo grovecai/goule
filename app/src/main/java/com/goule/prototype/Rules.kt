@@ -18,20 +18,23 @@ internal data class Rule(
     val usedMs: Long = 0,
     val blockedFrom: Long? = null,
     val blockedUntil: Long? = null,
+    // Captured on first use; edits only change the quota for the next window.
+    val windowUseMinutes: Int? = null,
 ) {
     fun isBlocked(now: Long) = blockedUntil?.let { it > now } == true
     fun remainingUseMs(now: Long): Long {
         val current = refresh(now)
         return if (current.isBlocked(now)) 0 else
-            (current.useMinutes * MINUTE - current.usedMs).coerceIn(0, current.useMinutes * MINUTE)
+            (current.useLimitMs - current.usedMs).coerceIn(0, current.useLimitMs)
     }
+    private val useLimitMs: Long get() = (windowUseMinutes ?: useMinutes) * MINUTE
     fun editWait(now: Long) = editedAt?.let { (it + EDIT_INTERVAL - now).coerceAtLeast(0) } ?: 0
     fun removeWait(now: Long) = (maxOf(createdAt, blockedFrom ?: createdAt) + HOUR - now).coerceAtLeast(0)
 
     fun refresh(now: Long): Rule = when {
         isBlocked(now) -> this
-        blockedUntil != null -> copy(blockedUntil = null, windowStart = null, usedMs = 0)
-        windowStart?.let { now >= it + DAY } == true -> copy(windowStart = null, usedMs = 0)
+        blockedUntil != null -> copy(blockedUntil = null, windowStart = null, usedMs = 0, windowUseMinutes = null)
+        windowStart?.let { now >= it + DAY } == true -> copy(windowStart = null, usedMs = 0, windowUseMinutes = null)
         else -> this
     }
 
@@ -50,12 +53,13 @@ internal data class Rule(
     private fun accumulate(delta: Long, now: Long): Rule {
         if (delta <= 0) return this
         val start = windowStart ?: now - delta
+        val quota = windowUseMinutes ?: useMinutes
         val used = usedMs + delta
-        return if (used >= useMinutes * MINUTE) {
-            val reachedAt = now - (used - useMinutes * MINUTE)
-            copy(windowStart = start, usedMs = useMinutes * MINUTE,
+        return if (used >= useLimitMs) {
+            val reachedAt = now - (used - useLimitMs)
+            copy(windowStart = start, usedMs = useLimitMs, windowUseMinutes = quota,
                 blockedFrom = reachedAt, blockedUntil = reachedAt + blockMinutes * MINUTE)
-        } else copy(windowStart = start, usedMs = used)
+        } else copy(windowStart = start, usedMs = used, windowUseMinutes = quota)
     }
 
     fun edit(use: Int, block: Int, now: Long): Rule {
@@ -63,7 +67,9 @@ internal data class Rule(
         check(editWait(now) == 0L)
         val current = refresh(now)
         return current.copy(useMinutes = use, blockMinutes = block, editedAt = now,
-            windowStart = null, usedMs = 0)
+            windowUseMinutes = current.windowUseMinutes ?: current.useMinutes.takeIf {
+                current.windowStart != null || current.usedMs > 0
+            })
     }
 }
 
