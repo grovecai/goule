@@ -1,5 +1,9 @@
 # Goule 验证手册
 
+## 2026-11-13 戒律暂停诊断
+
+OPPO PLJ110、Android 16、ColorOS V16.1.0，0.3.5/code 8 的 72a7263 功能构建，只读采集。最新退出为 04:00:28.751 系统杀进程 `o-kill(2)`；组件仍登记、Bound/Binding 为空、Crashed 含 FreezeService，主界面重开未恢复。用户补充此前刚执行一键清理或划掉任务，与系统退出时间吻合，最可能为手动清理触发。连续开机约 30 小时，本次不同于旧 F02 的重启撤权。未取得触发时的详细系统日志，具体清理类型及厂商策略仍未确定；未重新授权或改变手机设置，未验证恢复，也未修改产品代码。完整证据、源码解释及局限见 [本轮诊断](pause-diagnosis-2026-11-13.md)。
+
 ## 本地检查
 
 运行 `./scripts/check`。需要 Bash、Git、Python 3、JDK 17 和 Android SDK。将 `JAVA_HOME` 指向 JDK 17，将 `ANDROID_HOME` 指向 SDK，或在本地 `local.properties` 配置 `sdk.dir`。使用 Android Studio 的 SDK Manager 或 `sdkmanager` 安装 `platforms;android-35`、`build-tools;35.0.0`。真机安装另需 `platform-tools`。首次构建需要下载 Gradle 和 Maven 依赖。
