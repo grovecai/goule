@@ -54,6 +54,7 @@ internal fun restrictedSettingsHelp(): String = if (Build.MANUFACTURER.equals("o
 internal fun accessibilityRecoveryHelp(manufacturer: String = Build.MANUFACTURER): String =
     when (manufacturer.lowercase(java.util.Locale.ROOT)) {
         "oppo" -> "部分 ColorOS 会在重启后关闭通过安装包安装的应用的无障碍服务，即使已允许后台运行。" +
-            "请在系统设置中重新开启；若随后出现安全提醒，请核对后选择「保持开启」。斩心魔无法自动恢复这项授权。"
-        else -> "若重启或系统清理后服务被关闭，请在系统设置中重新开启。斩心魔无法自动恢复这项授权。"
+            "清理后也可能开关仍在但服务已中断，此时请先关闭再开启；若随后出现安全提醒，请核对后选择「保持开启」。" +
+            "返回斩心魔确认「已设置」。应用无法代替你重新开启无障碍。"
+        else -> "若重启或系统清理后服务被关闭，请在系统设置中重新开启。若开关已开但显示「连接中断」，请先关闭再开启，返回确认「已设置」。应用无法代替你重新开启无障碍。"
     }

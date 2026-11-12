@@ -66,6 +66,7 @@ class FreezeService : AccessibilityService() {
     }
 
     override fun onServiceConnected() {
+        Log.i(TAG, "Accessibility service connected")
         if (!listening) {
             listen(screenReceiver, IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
@@ -128,6 +129,7 @@ class FreezeService : AccessibilityService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.i(TAG, "UI task removed; saving usage while keeping the bound service")
         // Removing the UI task must preserve the system-bound accessibility session.
         reconcile(foreground)
         store.flush()
@@ -136,10 +138,12 @@ class FreezeService : AccessibilityService() {
 
     override fun onInterrupt() = clearForeground()
     override fun onUnbind(intent: Intent): Boolean {
+        Log.i(TAG, "Accessibility service unbound")
         disconnect()
         return super.onUnbind(intent)
     }
     override fun onDestroy() {
+        Log.i(TAG, "Accessibility service destroyed")
         disconnect()
         super.onDestroy()
     }
