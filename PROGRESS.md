@@ -10,7 +10,7 @@ Android 首版已实现。支持为多个 App 设置独立戒律、本机保存�
 
 同日详情页同步新增「还可刷」读数，复用列表计算，并将该文案纳入详情刷新判断。`./scripts/check` 与 Release 构建通过，原签名覆盖安装 OPPO，截图确认当前可刷的详情显示与列表一致，实际服务绑定保持，安装包哈希与本地一致。详情禁用到期、24 小时刷新及大字号的实机显示未在本轮复测，见 [详情验证](docs/verification.md#详情剩余可刷时长2026-11-12)。
 
-签名 APK 已在 GitHub 发布为 [v0.2 预发布版](https://github.com/grovecai/goule/releases/tag/v0.2)。发布包通过签名校验和 Android 15 模拟器的全新安装及启动检查。见 [v0.2 发布包验证](docs/verification.md#v02-发布包验证)。
+最新签名 APK 已在 GitHub 发布为 [v0.3.5 预发布版](https://github.com/grovecai/goule/releases/tag/v0.3.5)，包含列表与详情的剩余可刷时长。发布包通过构建、单元测试、Lint、签名和对齐检查，发布后回下载摘要一致。版本包未另装手机，功能构建的 OPPO 结果与覆盖边界见 [验证手册](docs/verification.md)。
 
 ## 已验证
 
@@ -122,3 +122,5 @@ v0.3.3 已发布 GitHub 并覆盖安装到 OPPO，版本与启动检查通过，
 ## v0.3.5 发布构建（2026-11-12）
 
 版本 0.3.5/versionCode 8，预发布，包含列表和详情的剩余可刷时长。`./scripts/check`、Release 构建、APK 元数据、签名及 ZIP 对齐校验通过，证书与从 GitHub 下载的 v0.3.4 发布包一致。资产为 goule-v0.3.5.apk 及对应 SHA-256 文件，更新说明见 [v0.3.5](docs/release-v0.3.5.md)。本次版本包未另装手机，既有功能构建的 OPPO 验证范围与未完成项继续保留。
+
+2026-11-12 20:15（北京时间）已发布 GitHub v0.3.5，标签指向 51c7b2f。预发布状态、两项资产、远程标签及回下载文件校验通过，校验文件与 APK 摘要一致。
