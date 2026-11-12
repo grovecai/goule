@@ -4,7 +4,11 @@
 
 版本升级为 0.3.7/versionCode 10，发布固定周期及页面稳定修复，包含 v0.3.6 后的连接中断恢复和后台锁定指引。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和页面回归 APK 构建通过；`assembleRelease` 通过。原有 OPPO PLJ110（Android 16、ColorOS 16.1.0）57f4d11 功能构建的安装与独立页面回归记录保留，本次版本包未另装手机，不以旧构建结果代替版本包全量实测。
 
-发布继续使用既有证书和预发布状态，计划附签名 APK 与 SHA-256 文件；版本元数据、签名/对齐和 GitHub 发布后回下载结果将在完成后补记。
+最终签名 APK 从干净发布提交 `3fe48659fc035660d182aeef6cb11a1047828b81` 构建，包名 `com.goule.prototype`、版本 0.3.7/code 10、最低 Android 11 核对通过，无 debuggable 标记。apksigner 验证和 ZIP 对齐通过，证书 SHA-256 与从 GitHub 回下载的 v0.3.6 发布包一致。
+
+06:18（北京时间）[GitHub v0.3.7](https://github.com/grovecai/goule/releases/tag/v0.3.7) 发布完成，非草稿且为预发布，远程注解标签解析到上述提交。仓库为 Public；Release 正文与版本说明文件一致，main 上 README 的版本说明及 APK 下载 URL 核对通过。资产仅 `goule-v0.3.7.apk`（3,938,415 字节）和 `goule-v0.3.7.apk.sha256`（83 字节）。发布后回下载两项文件，与本地逐字节一致，GitHub 资产 digest、文件大小及校验文件内容全部匹配。APK SHA-256：`dcd56b3d8967f76469f158d19d68a6e9f3fe160a1ab47a36829ec44ffec33bfb`。
+
+材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.7/`，包含回下载旧包、最终 APK/校验文件、证书报告、版本元数据、发布 API 信息和回下载验证结果。本轮仅发布和校验资产，没有重新安装手机或改变戒律；旧功能构建的真机记录与未覆盖范围继续保留。
 
 ## 2026-11-13 固定周期与页面闪缩修复
 
