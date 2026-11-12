@@ -11,6 +11,37 @@ class RulesTest {
     private fun rule(name: String = "a") = Rule(name, name, 1, 15, start)
 
     @Test
+    fun remainingQuotaReflectsIndependentSegmentsWithoutCountingTimeOnList() {
+        val first = rule().record(12_345, start + 12_345).record(10_000, start + MINUTE)
+        val second = rule("b").record(5_000, start + MINUTE)
+        assertEquals(37_655L, first.remainingUseMs(start + MINUTE))
+        assertEquals(37_655L, first.remainingUseMs(start + HOUR))
+        assertEquals(55_000L, second.remainingUseMs(start + HOUR))
+        assertEquals(22_345L, first.usedMs)
+    }
+
+    @Test
+    fun remainingQuotaIsZeroWhileBlockedIncludingAfterEditingThenResetsAtExpiry() {
+        val blocked = rule().record(MINUTE, start + MINUTE)
+        val edited = blocked.edit(2, 25, start + 2 * MINUTE)
+        val until = checkNotNull(blocked.blockedUntil)
+        assertEquals(0L, blocked.remainingUseMs(until - 1))
+        assertEquals(0L, edited.remainingUseMs(until - 1))
+        assertEquals(MINUTE, blocked.remainingUseMs(until))
+        assertEquals(2 * MINUTE, edited.remainingUseMs(until))
+    }
+
+    @Test
+    fun remainingQuotaResetsAtDayBoundaryButDoesNotOverrideActiveBlock() {
+        val partial = rule().record(20_000, start + 20_000)
+        assertEquals(40_000L, partial.remainingUseMs(start + DAY - 1))
+        assertEquals(MINUTE, partial.remainingUseMs(start + DAY))
+        val blocked = partial.record(40_000, start + DAY - 1)
+        assertEquals(0L, blocked.remainingUseMs(start + DAY))
+        assertEquals(MINUTE, partial.edit(1, 30, start + HOUR).remainingUseMs(start + HOUR))
+    }
+
+    @Test
     fun foregroundSegmentsAccumulateIndependentlyAndFreezeOnlyOnce() {
         val first = rule().record(30_000, start + 30_000)
         val second = rule("b").record(20_000, start + 80_000)

@@ -20,6 +20,11 @@ internal data class Rule(
     val blockedUntil: Long? = null,
 ) {
     fun isBlocked(now: Long) = blockedUntil?.let { it > now } == true
+    fun remainingUseMs(now: Long): Long {
+        val current = refresh(now)
+        return if (current.isBlocked(now)) 0 else
+            (current.useMinutes * MINUTE - current.usedMs).coerceIn(0, current.useMinutes * MINUTE)
+    }
     fun editWait(now: Long) = editedAt?.let { (it + EDIT_INTERVAL - now).coerceAtLeast(0) } ?: 0
     fun removeWait(now: Long) = (maxOf(createdAt, blockedFrom ?: createdAt) + HOUR - now).coerceAtLeast(0)
 

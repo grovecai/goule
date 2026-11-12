@@ -178,7 +178,7 @@ class MainActivity : Activity() {
     private fun signature(): List<String> {
         val now = store.now()
         return when (page) {
-            Page.RULES -> store.rules.map { ruleStatus(it, now) } + setupStatus()
+            Page.RULES -> store.rules.flatMap { listOf(ruleStatus(it, now), remainingUseLabel(it, now)) } + setupStatus()
             Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString())
@@ -460,6 +460,8 @@ class MainActivity : Activity() {
                     setOnClickListener { showRule(rule.packageName) }
                     addView(appRow(rule.packageName, rule.label, ruleStatus(rule, now), NIGHT_TEXT))
                     addView(durations(rule.useMinutes, rule.blockMinutes, NIGHT_TEXT, inline = true),
+                        LinearLayout.LayoutParams(-1, -2).apply { marginStart = dp(48) })
+                    addView(copyText(remainingUseLabel(rule, now), 14f, NIGHT_GOLD, true),
                         LinearLayout.LayoutParams(-1, -2).apply { marginStart = dp(48) })
                 })
                 divider(this, NIGHT_LINE)
