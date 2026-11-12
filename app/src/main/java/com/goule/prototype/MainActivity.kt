@@ -809,7 +809,8 @@ class MainActivity : Activity() {
             if (!openBackgroundSettings(battery = true)) toast("请手动在系统设置中查找电池优化")
         })
         content.addView(heading("3. 最近任务与清理", 18f))
-        content.addView(copyText("在最近任务中锁定「斩心魔」，减少一键清理的影响。锁定入口和清理行为因系统而异。", 15f))
+        content.addView(copyText("锁定「斩心魔」的最近任务，可减少一键清理的影响。", 15f))
+        content.addView(copyText(recentTaskLockHelp(), 15f))
         content.addView(copyText("这些设置不能保证服务始终运行。若清理后出现「连接中断」，请到无障碍设置中先关闭再开启服务，返回后确认「已设置」。", 14f, NIGHT_MUTED))
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
             if (appState != ServiceState.ON) {

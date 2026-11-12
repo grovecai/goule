@@ -24,6 +24,20 @@ internal fun backgroundProfile(manufacturer: String = Build.MANUFACTURER): Backg
         )
     }
 
+internal fun recentTaskLockHelp(manufacturer: String = Build.MANUFACTURER): String =
+    if (manufacturer.equals("oppo", ignoreCase = true)) {
+        "OPPO/ColorOS 操作步骤：\n" +
+            "1. 从屏幕底部上滑并停顿，进入最近任务；使用三键导航时，点最近任务键。\n" +
+            "2. 找到「斩心魔」卡片，点击卡片上方的「···」。\n" +
+            "3. 选择「锁定」。应用名称旁出现小锁图标，即表示已锁定。\n" +
+            "不同 ColorOS 版本的入口可能不同，请以手机实际显示为准。"
+    } else {
+        "1. 从屏幕底部上滑并停顿，进入最近任务；使用三键导航时，点最近任务键。\n" +
+            "2. 找到「斩心魔」卡片，在卡片菜单或长按菜单中查找「锁定」。\n" +
+            "3. 按系统提示完成锁定，并确认卡片上出现锁定标记。\n" +
+            "锁定入口和标记因系统而异，没有此选项可略过。"
+    }
+
 /** Public settings actions can be missing on manufacturer ROMs. Try each fallback. */
 internal fun Activity.openBackgroundSettings(battery: Boolean): Boolean {
     val appDetails = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
