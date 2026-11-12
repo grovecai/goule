@@ -10,9 +10,19 @@
 
 页面自动回归已加入 `app/src/androidTest`，`./scripts/check` 默认编译，带 `GOULE_UI_DEVICE=<adb序列号>` 时自动运行 `scripts/check-ui`。脚本使用独立应用 ID `com.goule.uiverify`，测试入口拒绝正式包名；仅写入独立测试包数据，结束后卸载该包和 instrumentation 包。列表/详情分别预置距固定重置点 12/24 秒的不同周期并实际跨过，检查原 TextView 被原位更新、根视图仍为同一对象、列表滚动位置不变；不是完整等待 50 或 130 分钟。OPPO 安装新测试包会要求厂商扫描及用户锁屏密码确认，须在手机上完成，不能绕过。
 
-OPPO PLJ110（Android 16、ColorOS V16.1.0，`PLJ110_16.0.10.502(CN01)`）独立包实际执行通过，输出 `PASS: list/detail fixed resets update existing views and preserve scroll`：列表及详情在各自预置的重置点一次恢复额度，同一个原有 TextView 收到更新，根视图对象保持，列表滚动位置保持；测试包和组件已清理。初次执行的包装脚本额外要求系统打印结束代码，而此系统在有 stream 结果时只打印 PASS 文本，导致包装层误报非零；已改为检查测试入口仅在所有断言通过后输出的明确 PASS，并拒绝失败标记。正式包覆盖安装结果另补。
+OPPO PLJ110（Android 16、ColorOS V16.1.0，`PLJ110_16.0.10.502(CN01)`）独立包实际执行通过，输出 `PASS: list/detail fixed resets update existing views and preserve scroll`：列表及详情在各自预置的重置点一次恢复额度，同一个原有 TextView 收到更新，根视图对象保持，列表滚动位置保持；测试包和组件已清理。初次执行的包装脚本额外要求系统打印结束代码，而此系统在有 stream 结果时只打印 PASS 文本，导致包装层误报非零；已改为检查测试入口仅在所有断言通过后输出的明确 PASS，并拒绝失败标记。正式包覆盖安装结果见下节。
 
 本轮没有打开正式目标 App 消耗用量、没有自然等待完整 50/130 分钟；前台识别、真实用满后的遮罩/锁屏/重连和更多 ROM 仍需另测。
+
+### 固定周期修复包覆盖安装（2026-11-13）
+
+06:03（北京时间）按已授权的保留数据覆盖流程，将源码 57f4d11 的 Release 构建安装至 OPPO PLJ110（Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`），版本仍为 0.3.6/code 9，未发布 GitHub 新版。
+
+Release 构建、原发布签名校验及 ZIP 对齐通过；与安装前回拉 APK 的签名证书一致。`adb install --no-incremental -r` 返回 Success，`am start -W` 返回 Status: ok。首次安装时间 `2026-11-11 20:28:04`、appId `10381` 保持，未卸载或清除正式包数据。回拉安装 APK 的 SHA-256 与本地签名包一致：`60e4500cfbc50a8d1ef0deb3d2c567e1e369bf5014bd9a2d75a7ef78dacbe854`。
+
+安装前后截图确认小红书、抖音、红果免费短剧三条戒律及 10/120 参数保留。安装前旧滚动用量已自然释放、三条均显示剩余 10 分钟，安装后读数相同；不以本次空用量页面核对代替非零迁移的自动测试。详情完整显示固定周期说明及首次使用开始周期提示；有已开始周期时显示下次重置时间，相关路径由独立页面回归覆盖。正式列表停留的两张间隔 4 秒截图，在排除状态栏、手势区和临时滚动条后内容像素完全一致，未观察到持续缩放或额度增长。
+
+最终 Enabled/Bound 均有 FreezeService，Binding/Crashed 为空，独立测试包及组件均已移除。正式手机停留在显示三条戒律的列表。材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/fixed-cycle-57f4d11/`，包含 APK、证书/摘要报告、包和服务状态、列表与详情截图及页面回归 PASS 记录。完整自然周期、正式目标实际用满后的遮罩/锁屏/重连、更多 ROM、短屏/大字号仍待单独复测。
 
 ## 2026-11-13 滚动窗口计时
 
