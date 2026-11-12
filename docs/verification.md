@@ -6,6 +6,14 @@
 
 `./scripts/check` 通过：仓库检查、Debug/Release 各 28 项单元测试、Lint 和 Debug APK 构建。本轮仅补充帮助文案，没有新增复述文案的测试，也没有安装、发布或操作手机。此前 OPPO PLJ110（Android 16、ColorOS 16.1.0）的实际任务锁定及清理结果见 [恢复验证](recovery-verification-2026-11-13.md)；新增步骤在手机页面、短屏和大字号下的完整显示尚未验证，不能将此前系统操作通过记为本轮页面通过。
 
+### 同日覆盖安装与页面核对
+
+05:06（北京时间）按用户要求，将 edeabcb 的 Release 构建用原发布签名覆盖安装到 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。版本仍为 0.3.6/code 9 的未发布功能构建。assembleRelease、apksigner 及 ZIP 对齐通过，安装前与手机旧包比对证书 SHA-256 一致；`adb install --no-incremental -r` 成功，未卸载或清除数据。
+
+启动成功，原有戒律仍显示。经设置进入后台运行指引并向下滚动，截图确认第 3 组包含最近任务手势/按键、卡片「···」菜单、「锁定」、小锁图标确认及系统差异说明，文字正常换行，底部「返回戒律」完整可见。UI 层级采集结束后等待服务重新绑定，05:07 核对 Enabled services 仍含 FreezeService、Bound 实际绑定、Crashed 为空。手机 base.apk SHA-256 与本地签名包一致：`2c1f2d78399e3519447b32e44778d39d24f5bea032a6f93621449f1478bebdc8`。
+
+手机停留已滚动到任务锁定步骤的后台指引。截图及安装材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/task-lock-guide-edeabcb/`。本轮未改手机设置或戒律，未重测清理场景，未发布 GitHub；新增文案的短屏和大字号显示仍待验证。
+
 ## 2026-11-13 清理后恢复修复与真机验证
 
 详见 [完整矩阵](recovery-verification-2026-11-13.md)。OPPO PLJ110（Android 16、ColorOS V16.1.0）原签名修复包：完全允许后台行为时，正式包划掉任务保持绑定；未锁定一键清理明确触发 `o-kill(2) ... with oneclick` 并留下异常服务，新中断提示和关闭再开启恢复通过；锁定最近任务后再次清理保持绑定。独立包确认 20 秒已用量及达到阈值后的禁用截止不重置，手动重开后重进目标恢复遮罩。测试包已卸载，正式服务绑定及任务锁定保留。自动检查通过，Debug/Release 各 28 项测试无失败；本轮不承诺自动恢复，不替换 GitHub 发布包。
