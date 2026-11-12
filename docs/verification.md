@@ -35,6 +35,12 @@ OPPO PLJ110，Android 16、ColorOS 16.1.0，系统构建 `PLJ110_16.0.10.502(CN0
 
 设备 base.apk 与本地签名 APK 的 SHA-256 一致：`f1b662756bad06c67537d6fb8121e5d170804399529fbe18758f390eb8fbd07b`。未替换 GitHub 发布资产。详情禁用到期、24 小时刷新及短屏/大字号的实机显示未在本轮复测，不以共享计算测试代替页面完整验收。
 
+## v0.3.5 发布包验证（2026-11-12）
+
+版本 0.3.5/versionCode 8，包名 com.goule.prototype，最低 Android 11（API 30）。`./scripts/check` 通过，Debug/Release 各 12 项单元测试无失败，Lint 和 Debug 构建通过；assembleRelease 通过。apksigner、ZIP 对齐和 aapt 元数据核对通过。重新从 GitHub 下载 v0.3.4 发布 APK，确认新包的发布证书 SHA-256 一致。
+
+签名 APK 为 `goule-v0.3.5.apk`，3,926,127 字节，SHA-256：`3764ebfdad2650359248d3e66ca4a09b16070335768a78606ea8de198020917a`，附同名 `.sha256` 文件。既有 OPPO 实机验证来自 0.3.4 功能构建，见上文；本次更新版本号后的发布包未另装手机，未将其记为完整真机回归通过。
+
 ## 2026-11-11 OPPO 完整回归
 
 最新结果见 [逐项矩阵与失败复现](oppo-regression-2026-11-11.md)。OPPO PLJ110、Android 16、ColorOS 16.1.0，产品源码 63d36ac。规则、权限、可选后台、计时、锁屏、最近任务与清理等已实测；来电返回漏拦截、重启关闭服务、首次引导恢复三项失败尚未修复。未复现受限设置，过夜待机及其他品牌未覆盖。本轮临时包已清理、正式服务已恢复，不能标为全量通过。
