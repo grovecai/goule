@@ -170,7 +170,8 @@ class FreezeService : AccessibilityService() {
             if (rule.packageName == previous) rule.record(delta, now) else rule.refresh(now)
         }
         val transitioned = updated.zip(store.rules).any { (new, old) ->
-            new.blockedUntil != old.blockedUntil
+            new.blockedFrom != old.blockedFrom ||
+                new.blockedUntil?.takeIf { it > now } != old.blockedUntil?.takeIf { it > now }
         }
         val target = if (interactive) next else null
         val saved = store.change(updated, force = transitioned || (previous != null && previous != target))
@@ -182,8 +183,7 @@ class FreezeService : AccessibilityService() {
         if (rule != null && deadline != null) showOverlay(rule, deadline, now) else hideOverlay()
 
         if (rule != null) {
-            val delay = if (deadline != null && overlay == null) 1_000L else if (deadline != null) deadline - now else
-                rule.remainingUseMs(now).coerceIn(1, 1_000)
+            val delay = if (deadline != null && overlay == null) 1_000L else rule.nextCheckDelayMs(now)
             handler.postDelayed(tick, delay)
         }
     }

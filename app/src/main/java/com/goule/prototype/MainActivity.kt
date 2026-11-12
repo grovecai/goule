@@ -172,7 +172,7 @@ class MainActivity : Activity() {
             Page.RULES -> store.rules.flatMap { listOf(ruleStatus(it, now), remainingUseLabel(it, now)) } + setupStatus()
             Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
-                listOf(ruleStatus(it, now), remainingUseLabel(it, now),
+                listOf(ruleStatus(it, now), remainingUseLabel(it, now), usageWindowLabel(it, now),
                     waitMinutes(it.editWait(now)).toString(), waitMinutes(it.removeWait(now)).toString(), setupStatus())
             }.orEmpty()
             else -> emptyList()
@@ -496,7 +496,7 @@ class MainActivity : Activity() {
 
     private fun durations(use: Int, block: Int, textColor: Int = NIGHT_TEXT, inline: Boolean = false) = row().apply {
         gravity = Gravity.TOP
-        for ((label, minutes, color) in listOf(Triple("刷", use, TEAL), Triple("禁", block, 0xffaf3541.toInt()))) {
+        for ((label, minutes, color) in listOf(Triple("刷", use, TEAL), Triple("歇", block, 0xffaf3541.toInt()))) {
             val chip = if (inline) row() else column()
             chip.addView(copyText(label, 14f, Color.WHITE, true).apply {
                 gravity = Gravity.CENTER
@@ -537,6 +537,7 @@ class MainActivity : Activity() {
             })
             addView(durations(rule.useMinutes, rule.blockMinutes))
             addView(copyText(remainingUseLabel(rule, now), 16f, NIGHT_GOLD, true))
+            addView(copyText(usageWindowLabel(rule, now), 14f, NIGHT_MUTED))
             if (appState != ServiceState.ON && rule.isBlocked(now)) {
                 addView(copyText("服务连接后，禁用至 " + deadlineLabel(checkNotNull(rule.blockedUntil), now)))
             }
@@ -659,15 +660,12 @@ class MainActivity : Activity() {
         content.addView(heading(if (editing) "修改戒律" else "设置时长"))
         targetId?.let { content.addView(appRow(it, target(it)?.label ?: currentRule()?.label ?: it)) }
         val use = numberField("可刷时长（分钟）", draftUse, "1–180 分钟")
-        val block = numberField("禁用时长（分钟）", draftBlock, "15–180 分钟")
+        val block = numberField("休息时长（分钟）", draftBlock, "15–180 分钟")
         val preview = copyText("")
         content.addView(card().apply {
             addView(preview)
             if (editing) {
-                val hint = if (currentRule()?.isBlocked(store.now()) == true)
-                    "保留本次禁用截止时间，新时长从下一轮生效。"
-                else "本轮开始计时后，保留已用时间和原可刷额度，新可刷时长从下一轮生效。禁用时长用于下次禁用。"
-                addView(copyText(hint, 14f, NIGHT_MUTED))
+                addView(copyText("保留已记录用量、原可刷额度和窗口长度。有效用量全部过期后，新时长生效。", 14f, NIGHT_MUTED))
             }
         })
         val error = copyText("", 14f, NIGHT_ERROR).apply {
@@ -677,7 +675,8 @@ class MainActivity : Activity() {
         content.addView(error)
         fun showPreview() {
             preview.text = if (draftUse.toIntOrNull() in 1..180 && draftBlock.toIntOrNull() in 15..180)
-                "刷 $draftUse 分钟，禁 $draftBlock 分钟。" else "填写时长后查看戒律预览。"
+                "任意连续 ${draftUse.toInt() + draftBlock.toInt()} 分钟内，最多刷 $draftUse 分钟。旧用量过期后逐步恢复额度。"
+            else "填写时长后查看戒律预览。"
         }
         use.onText { draftUse = it; dirty = true; use.error = null; error.text = ""; error.visibility = View.GONE; showPreview() }
         block.onText { draftBlock = it; dirty = true; block.error = null; error.text = ""; error.visibility = View.GONE; showPreview() }

@@ -15,7 +15,7 @@ internal class RuleStore private constructor(context: Context) {
         System.currentTimeMillis(), boot >= 0 && prefs.getInt("boot", -1) == boot,
     )
 
-    var rules: List<Rule> = decodeRules(prefs.getString("items", null))
+    var rules: List<Rule> = decodeRules(prefs.getString("items", null), prefs.getLong("clock", clockStart))
         private set
     private var dirty = false
     private var lastWrite = anchorElapsed

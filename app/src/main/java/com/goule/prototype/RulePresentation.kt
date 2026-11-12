@@ -12,3 +12,12 @@ internal fun remainingUseLabel(rule: Rule, now: Long): String {
     }
     return "还可刷 $duration"
 }
+
+internal fun usageWindowLabel(rule: Rule, now: Long): String {
+    val current = rule.refresh(now)
+    val use = current.activeUseMinutes ?: current.useMinutes
+    val block = current.activeBlockMinutes ?: current.blockMinutes
+    val pending = use != current.useMinutes || block != current.blockMinutes
+    return "任意连续 ${use + block} 分钟内，最多刷 $use 分钟。" +
+        if (pending) "新时长待有效用量全部过期后生效。" else "旧用量过期后逐步恢复额度。"
+}
