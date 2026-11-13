@@ -11,8 +11,8 @@ android {
         applicationId = providers.gradleProperty("verificationApplicationId").orElse("com.goule.prototype").get()
         minSdk = 30
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.3.8"
+        versionCode = 12
+        versionName = "0.3.9"
         testInstrumentationRunner = "com.goule.prototype.PageRefreshInstrumentation"
     }
 
