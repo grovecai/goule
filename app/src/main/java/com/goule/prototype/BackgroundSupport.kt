@@ -64,12 +64,18 @@ internal fun restrictedSettingsHelp(): String = if (Build.MANUFACTURER.equals("o
     "若提示「受限制的设置」，打开应用信息，在右上角菜单中选择「允许受限制的设置」。部分系统需先进入「权限管理」。确认后返回无障碍设置开启服务。"
 }
 
-internal fun riskInterceptionHelp(): String =
-    "手机若有「风险行为拦截」功能，可能拦截「斩心魔」并关闭无障碍服务，导致计时和禁用暂停。\n" +
-        "1. 打开手机上的「风险行为拦截」程序，或在系统安全设置中查找该功能。\n" +
+internal fun riskInterceptionHelp(manufacturer: String = Build.MANUFACTURER): String {
+    val service = if (manufacturer.equals("oppo", ignoreCase = true)) {
+        "OPPO/ColorOS 的「风险行为拦截」是系统自带「手机管家」中的一项服务。"
+    } else {
+        "部分厂商在系统自带「手机管家」中提供「风险行为拦截」服务。"
+    }
+    return service + "它可能拦截「斩心魔」并关闭无障碍服务，导致计时和禁用暂停。\n" +
+        "1. 打开系统自带的「手机管家」，查找「风险行为拦截」服务。\n" +
         "2. 找到该功能的白名单，将「斩心魔」加入白名单。\n" +
         "3. 若无障碍服务已被关闭，请到无障碍设置中重新开启；若开关已开但显示「连接中断」，先关闭再开启。返回斩心魔，确认状态为「已设置」。\n" +
-        "入口和名称因系统而异，请以手机实际显示为准；没有此功能可略过。"
+        "这是手机厂商提供的服务，并非 Android 通用设置。「手机管家」、服务及白名单的入口和名称因品牌、系统版本而异，请以手机实际显示为准；没有此服务可略过。"
+}
 
 /** Explain recovery without claiming that an app can restore a revoked system grant. */
 internal fun accessibilityRecoveryHelp(manufacturer: String = Build.MANUFACTURER): String =

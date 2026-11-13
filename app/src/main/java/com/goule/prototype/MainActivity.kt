@@ -37,7 +37,7 @@ import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
-    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND }
+    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION }
     private val connectionState = ServiceConnectionState()
 
     private val store by lazy { RuleStore.get(this) }
@@ -47,6 +47,7 @@ class MainActivity : Activity() {
     private var page = Page.WELCOME
     private var permissionOrigin = Page.WELCOME
     private var helpOrigin = Page.RULES
+    private var riskGuideOrigin = Page.SETTINGS
     private var targets = emptyList<TargetApp>()
     private var targetId: String? = null
     private var replacingId: String? = null
@@ -81,6 +82,7 @@ class MainActivity : Activity() {
             onboarding = it.getBoolean("onboarding")
             permissionOrigin = Page.valueOf(it.getString("origin", Page.WELCOME.name))
             helpOrigin = Page.valueOf(it.getString("helpOrigin", Page.RULES.name))
+            riskGuideOrigin = Page.valueOf(it.getString("riskGuideOrigin", Page.SETTINGS.name))
             pickerReturn = Page.valueOf(it.getString("pickerReturn", Page.RULES.name))
             targetId = it.getString("target")
             replacingId = it.getString("replacing")
@@ -104,6 +106,7 @@ class MainActivity : Activity() {
         outState.putBoolean("onboarding", onboarding)
         outState.putString("origin", permissionOrigin.name)
         outState.putString("helpOrigin", helpOrigin.name)
+        outState.putString("riskGuideOrigin", riskGuideOrigin.name)
         outState.putString("pickerReturn", pickerReturn.name)
         outState.putString("target", targetId)
         outState.putString("replacing", replacingId)
@@ -236,6 +239,7 @@ class MainActivity : Activity() {
             Page.DISCARD -> discardPage()
             Page.HELP -> help()
             Page.BACKGROUND -> backgroundSettings()
+            Page.RISK_INTERCEPTION -> riskInterceptionSettings()
         }
         if (page == Page.RULES || page == Page.SETTINGS) bottomNavigation()
         visibleSignature = signature()
@@ -371,7 +375,7 @@ class MainActivity : Activity() {
     private fun guideHeader(title: String, status: String?, purpose: String) {
         up()
         content.addView(heading(title))
-        if (onboarding) content.addView(copyText(
+        if (onboarding && page in listOf(Page.PERMISSION, Page.BACKGROUND)) content.addView(copyText(
             if (page == Page.PERMISSION) "第 1 步，共 2 步" else "第 2 步，共 2 步", 14f, NIGHT_MUTED,
         ))
         if (status != null) content.addView(tag(status))
@@ -382,10 +386,7 @@ class MainActivity : Activity() {
         val recovering = appState.needsRecovery
         guideHeader("无障碍服务", serviceStatusLabel(), if (recovering) servicePausedMessage
             else "识别目标 App、累计使用时间，并在用满后显示禁用页。")
-        if (recovering) {
-            content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
-            content.addView(copyText(riskInterceptionHelp(), 14f, NIGHT_MUTED))
-        }
+        if (recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
         content.addView(copyText(if (appState == ServiceState.INTERRUPTED)
             "1. 打开系统设置，在「已下载的应用」中找到「斩心魔」。\n2. 先关闭服务，再重新开启；若有安全提醒，按系统提示确认。\n3. 返回此页，等待状态变为「已设置」后，戒律才恢复执行。"
             else "1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，等待状态变为「已设置」。"))
@@ -404,15 +405,13 @@ class MainActivity : Activity() {
             render(keepScroll = true)
         })
         if (showSetupHelp) {
-            if (!recovering) {
-                content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
-                content.addView(copyText(riskInterceptionHelp(), 14f, NIGHT_MUTED))
-            }
+            if (!recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
             content.addView(copyText(restrictedSettingsHelp(), 14f, NIGHT_MUTED))
             content.addView(button("打开应用信息", soft = true) {
                 if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
             })
         }
+        content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
         content.addView(button("下一步：允许后台运行", soft = true) {
             if (appState != ServiceState.ON) {
                 toast("请先开启无障碍服务并等待连接")
@@ -802,6 +801,7 @@ class MainActivity : Activity() {
             for ((title, status, destination) in listOf(
                 Triple("无障碍服务", serviceStatusLabel(), Page.PERMISSION),
                 Triple("允许后台运行", null, Page.BACKGROUND),
+                Triple("风险行为拦截白名单", null, Page.RISK_INTERCEPTION),
             )) {
                 divider(this, NIGHT_LINE)
                 addView(row().apply {
@@ -811,8 +811,11 @@ class MainActivity : Activity() {
                 val recovering = destination == Page.PERMISSION && appState.needsRecovery
                 if (recovering) addView(copyText(servicePausedMessage, 14f, NIGHT_MUTED))
                 addView(button(if (recovering) "重新开启无障碍" else "去设置", primary = true) {
-                    permissionOrigin = Page.SETTINGS
-                    go(destination)
+                    if (destination == Page.RISK_INTERCEPTION) openRiskInterceptionGuide()
+                    else {
+                        permissionOrigin = Page.SETTINGS
+                        go(destination)
+                    }
                 })
             }
             divider(this, NIGHT_LINE)
@@ -842,8 +845,7 @@ class MainActivity : Activity() {
         content.addView(copyText("锁定「斩心魔」的最近任务，可减少一键清理的影响。", 15f))
         content.addView(copyText(recentTaskLockHelp(), 15f))
         content.addView(copyText("这些设置不能保证服务始终运行。若清理后出现「连接中断」，请到无障碍设置中先关闭再开启服务，返回后确认「已设置」。", 14f, NIGHT_MUTED))
-        content.addView(heading("4. 风险行为拦截白名单", 18f))
-        content.addView(copyText(riskInterceptionHelp(), 15f))
+        content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
             if (appState != ServiceState.ON) {
                 permissionOrigin = Page.BACKGROUND
@@ -858,6 +860,17 @@ class MainActivity : Activity() {
             isEnabled = setupMissing().isEmpty()
             alpha = if (isEnabled) 1f else .45f
         })
+    }
+
+    private fun openRiskInterceptionGuide() {
+        riskGuideOrigin = page
+        go(Page.RISK_INTERCEPTION)
+    }
+
+    private fun riskInterceptionSettings() {
+        guideHeader("风险行为拦截白名单", null, "按手机厂商提供的服务单独设置，减少无障碍服务被拦截关闭的影响。")
+        content.addView(copyText(riskInterceptionHelp(), 15f))
+        content.addView(button("返回", primary = true) { back() })
     }
 
     private fun policyText(text: String, emphasis: String): TextView {
@@ -919,6 +932,7 @@ class MainActivity : Activity() {
             Page.DISCARD -> go(Page.FORM)
             Page.HELP -> go(helpOrigin)
             Page.BACKGROUND -> if (onboarding) go(Page.PERMISSION) else go(Page.SETTINGS)
+            Page.RISK_INTERCEPTION -> go(riskGuideOrigin)
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null
