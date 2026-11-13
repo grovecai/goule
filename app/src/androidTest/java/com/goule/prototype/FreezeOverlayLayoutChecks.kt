@@ -4,11 +4,14 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Insets
 import android.graphics.Rect
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
@@ -26,9 +29,28 @@ internal object FreezeOverlayLayoutChecks {
             val deadline = "11月14日 下午11:59"
             val overlay = FreezeOverlayView(configured, "这是一个用于检查换行的很长很长的目标应用名称", deadline,
                 onCloseTarget = { closeCount++ }, onGoHome = { homeCount++ })
-            overlay.setPadding(configured.dp(16), configured.dp(8), configured.dp(24), configured.dp(16))
             // Resizing the same overlay must switch both ways without a new service window.
             for ((width, height) in listOf(360 to 640, 640 to 320, 800 to 360, 640 to 240, 360 to 640, 640 to 320)) {
+                val bars = Insets.of(0, configured.dp(24), 0, configured.dp(24))
+                val cutout = if (width > height) Insets.of(configured.dp(28), 0, 0, 0)
+                    else Insets.of(0, configured.dp(32), 0, 0)
+                val gestures = Insets.of(configured.dp(16), 0, configured.dp(24), configured.dp(16))
+                val safeInsets = Insets.max(Insets.max(bars, cutout), gestures)
+                for (visible in listOf(true, false, true)) {
+                    overlay.dispatchApplyWindowInsets(WindowInsets.Builder()
+                        .setInsets(WindowInsets.Type.systemBars(), if (visible) bars else Insets.NONE)
+                        .setInsetsIgnoringVisibility(WindowInsets.Type.systemBars(), bars)
+                        .setVisible(WindowInsets.Type.systemBars(), visible)
+                        .setInsets(WindowInsets.Type.displayCutout(), cutout)
+                        .setInsetsIgnoringVisibility(WindowInsets.Type.displayCutout(), cutout)
+                        .setInsets(WindowInsets.Type.mandatorySystemGestures(), gestures)
+                        .setInsetsIgnoringVisibility(WindowInsets.Type.mandatorySystemGestures(), gestures)
+                        .build())
+                    check(overlay.paddingLeft == safeInsets.left && overlay.paddingTop == safeInsets.top &&
+                        overlay.paddingRight == safeInsets.right && overlay.paddingBottom == safeInsets.bottom) {
+                        "Safe insets lost or added twice: ${width}x$height barsVisible=$visible"
+                    }
+                }
                 val w = configured.dp(width)
                 val h = configured.dp(height)
                 overlay.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
@@ -37,6 +59,19 @@ internal object FreezeOverlayLayoutChecks {
                 check(descendants(overlay).filterIsInstance<TextView>().any { it.text.toString() == deadline }) {
                     "Deadline changed during resize"
                 }
+                val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                overlay.draw(Canvas(bitmap))
+                for ((x, y) in listOf(0 to 0, w / 2 to 0, w - 1 to 0, 0 to h - 1, w - 1 to h - 1)) {
+                    check(bitmap.getPixel(x, y) == Color.rgb(32, 17, 37)) {
+                        "Overlay background leaks at ($x,$y) in ${width}x$height"
+                    }
+                }
+                if (width == 640 && height == 320 || width == 360 && height == 640) {
+                    File(context.getExternalFilesDir(null), "overlay-${width}x$height-$fontScale.png").outputStream().use {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                    }
+                }
+                bitmap.recycle()
                 if (width < height) continue
                 val safe = Rect(overlay.paddingLeft, overlay.paddingTop, w - overlay.paddingRight, h - overlay.paddingBottom)
                 val buttons = descendants(overlay).filterIsInstance<Button>().toList()
@@ -71,14 +106,6 @@ internal object FreezeOverlayLayoutChecks {
                     check(closeCount + homeCount == before + 1) { "Wrong exit callback" }
                 }
                 check(closeCount == homeCount) { "Exit callbacks are mismatched" }
-                if (width == 640 && height == 320) {
-                    val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                    overlay.draw(Canvas(bitmap))
-                    File(context.getExternalFilesDir(null), "overlay-landscape-$fontScale.png").outputStream().use {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-                    }
-                    bitmap.recycle()
-                }
             }
         }
     }

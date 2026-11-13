@@ -74,7 +74,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                 }
             }
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
-                "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n")
+                "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
+                "PASS: overlay edge background and stable system/cutout/gesture insets\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

@@ -34,8 +34,9 @@ internal class FreezeOverlayView(
         isClickable = true
         setBackgroundColor(backdrop)
         setOnApplyWindowInsetsListener { _, insets ->
-            val gestures = insets.getInsets(WindowInsets.Type.mandatorySystemGestures())
-            setPadding(gestures.left, gestures.top, gestures.right, gestures.bottom)
+            val safe = insets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or
+                WindowInsets.Type.displayCutout() or WindowInsets.Type.mandatorySystemGestures())
+            setPadding(safe.left, safe.top, safe.right, safe.bottom)
             insets
         }
     }

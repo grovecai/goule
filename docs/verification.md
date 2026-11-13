@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## 2026-11-13 禁用遮罩顶部漏底修复
+
+用户截图中状态栏露出目标 App 背景。源码确认原窗口以 `setFitInsetsTypes(systemBars | displayCutout)` 整体避让，背景无法绘制到屏幕顶部。现取消窗口 inset 裁缩，添加屏幕内布局及全边缘刘海延伸；根视图仍绘制不透明深紫背景，内容按系统栏、刘海与必要手势的最大边距避让，显隐不重复叠加。
+
+自动检查：不指定设备的 `./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug APK 与 instrumentation APK 编译通过。扩展既有独立包布局回归，使用 WindowInsets.Builder 分发系统栏可见/隐藏/恢复、竖屏顶部与横屏侧边刘海及手势边距，断言四侧最大值不叠加、边缘背景像素不透明，并保留三档字号、短横屏按钮触摸、同一视图尺寸往返及截止文案检查；新增明确 PASS 标记由 `scripts/check-ui` 检查。默认 `./scripts/check` 编译此检查，指定 `GOULE_UI_DEVICE` 后才实际运行 Android 布局断言。最终无设备检查日志为本机 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-final-check.log`。
+
+设备尝试：OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。独立 `com.goule.uiverify` 安装停在系统确认并超时，ADB 返回 `Failure [-99]`；没有运行 instrumentation，不能记为布局或实际服务窗口通过。会话已失败，独立应用及 `.test` 包均未安装；未覆盖正式 `com.goule.prototype`、未修改正式戒律或无障碍授权。
+
+待复测：完成独立包 Android 布局回归；原签名正式包覆盖安装后，核对顶部背景、横竖屏刘海、通知栏下拉、系统返回/桌面/最近任务、两种退出操作及触摸拦截。布局回归不创建真实无障碍窗口，不能代替服务窗口与系统入口的端到端检查。本轮无新版本发布。构建与安装尝试日志保存在本机 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-check.log`。
+
 
 ## v0.3.8 发布包验证（2026-11-13）
 
