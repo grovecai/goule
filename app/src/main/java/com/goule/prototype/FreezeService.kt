@@ -17,6 +17,8 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
+import java.io.FileDescriptor
+import java.io.PrintWriter
 
 class FreezeService : AccessibilityService() {
     private val store by lazy { RuleStore.get(this) }
@@ -42,6 +44,29 @@ class FreezeService : AccessibilityService() {
     private var overlay: View? = null
     private var overlayRule: Pair<String, Long>? = null
     private var listening = false
+    private val observations = ArrayDeque<String>()
+    private var lastEventAt = 0L
+    private var eventCount = 0L
+    private var sampleCount = 0L
+    private var rejectedSamples = 0L
+    private var lastSampleAwake = 0L
+    private var lastSampleElapsed = 0L
+
+    /** Only configured target identities are retained; never event text or window content. */
+    private fun observe(message: String) {
+        if (observations.size == 32) observations.removeFirst()
+        observations.addLast("${SystemClock.uptimeMillis()}: $message")
+    }
+
+    override fun dump(fd: FileDescriptor, writer: PrintWriter, args: Array<out String>) {
+        writer.println("connected=$connected consent=${store.consent} interactive=${power.isInteractive} locked=${keyguard.isKeyguardLocked}")
+        writer.println("uptime=${SystemClock.uptimeMillis()} foreground=$foreground observingSince=$observedAtUptime overlay=$overlayRule")
+        writer.println("events=$eventCount lastEventAt=$lastEventAt samples=$sampleCount rejected=$rejectedSamples lastAwake=$lastSampleAwake lastElapsed=$lastSampleElapsed")
+        val now = store.now()
+        for (rule in store.rules) writer.println("target=${rule.packageName} eligible=${rule.packageName in eligible} usedMs=${rule.usedMs} remainingMs=${rule.remainingUseMs(now)} cycleStart=${rule.cycleStart} blockedUntil=${rule.blockedUntil}")
+        writer.println("Recent observations (uptime ms):")
+        observations.forEach(writer::println)
+    }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = clearForeground()
@@ -55,6 +80,7 @@ class FreezeService : AccessibilityService() {
 
     override fun onServiceConnected() {
         Log.i(TAG, "Accessibility service connected")
+        observe("service connected")
         if (!listening) {
             listen(screenReceiver, IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
@@ -89,9 +115,21 @@ class FreezeService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        eventCount++
+        lastEventAt = SystemClock.uptimeMillis()
+        val category = when (val name = event.packageName?.toString()) {
+            in eligible -> "target=$name"
+            packageName -> "self"
+            in launchers -> "launcher"
+            else -> "other"
+        }
+        observe("event $category type=${event.eventType} age=${lastEventAt - event.eventTime} changes=${event.contentChangeTypes}")
         if (!store.consent || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventTime < ignoreEventsBefore
-        ) return
+        ) {
+            observe("event ignored consent=${store.consent} beforeWatermark=${event.eventTime < ignoreEventsBefore}")
+            return
+        }
         val name = event.packageName?.toString()
         // The overlay reports its own window change without taking input focus.
         if (name == packageName && event.className?.toString() == OVERLAY_EVENT_CLASS) return
@@ -137,6 +175,7 @@ class FreezeService : AccessibilityService() {
     }
 
     private fun clearForeground() {
+        observe("clear foreground interactive=${power.isInteractive} locked=${keyguard.isKeyguardLocked}")
         handler.removeCallbacks(leaveAfterLauncherEvent)
         recents.reset()
         ignoreEventsBefore = SystemClock.uptimeMillis()
@@ -152,8 +191,15 @@ class FreezeService : AccessibilityService() {
         val elapsed = SystemClock.elapsedRealtime()
         val interactive = connected && store.consent && power.isInteractive && !keyguard.isKeyguardLocked
         val delta = if (interactive) observedAtUptime?.let {
+            sampleCount++
+            lastSampleAwake = uptime - it
+            lastSampleElapsed = elapsed - observedAtElapsed
             observedUsage(it, observedAtElapsed, uptime, elapsed)
         } ?: 0 else 0
+        if (observedAtUptime != null && interactive && delta == 0L && lastSampleAwake > 0) {
+            rejectedSamples++
+            observe("sample rejected awake=$lastSampleAwake elapsed=$lastSampleElapsed")
+        }
         val updated = store.rules.map { rule ->
             if (rule.packageName == previous) rule.record(delta, now) else rule.refresh(now)
         }
@@ -163,6 +209,7 @@ class FreezeService : AccessibilityService() {
         }
         val target = if (interactive) next else null
         val saved = store.change(updated, force = transitioned || (previous != null && previous != target))
+        if (previous != target || !saved) observe("reconcile $previous -> $target saved=$saved interactive=$interactive")
         val rule = store.rules.find { it.packageName == target }
         foreground = rule?.packageName
         observedAtUptime = uptime.takeIf { rule != null && !rule.isBlocked(now) && saved }

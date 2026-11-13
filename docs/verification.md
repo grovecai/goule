@@ -1,5 +1,11 @@
 # Goule 验证手册
 
+## 红果计时停滞诊断（2026-11-13）
+
+用户反馈使用红果后剩余时间长时间不变，随后补充偶尔恢复、实际列表和最近任务预览都观察过。21:05（北京时间）OPPO PLJ110，Android 16、ColorOS V16.1.0，正式 0.3.8/code 11 服务 Enabled/Bound 正常，Binding/Crashed 为空；前台计时进程未冻结，RUN_ANY_IN_BACKGROUND 为 allow。起始列表红果剩余 8:46，另一观察点 8:40；21:07 约 24 秒真实红果前台后显示 8:16。25 次约 1 秒间隔的焦点采样前 24 秒均为红果 ShortSeriesActivity，随后经过桌面及戒律页；这一轮扣时符合实际停留，不代表间歇停滞已修复。
+
+源码检查列表在 onResume 立即刷新并每秒原位更新，内存规则由 Activity/Service 共用，约 5 秒落盘不应造成相同长度的显示延迟。为继续定位，增加 Service dump：只保留配置目标的身份，输出服务/前台/采样状态、已记用量和最近 32 条分类观察；其他 App 只记 other/self/launcher 分类，不读事件文本或窗口内容，诊断只驻内存。`./scripts/check` 通过，产品识别及计时算法尚未修改。材料目录为本机 `/Users/caiyuanrui/.cache/goule-android/redfruit-timing-20261113/`，手机材料不提交仓库。
+
 ## 顶部遮罩修复包覆盖安装（2026-11-13）
 
 20:08:21（北京时间）按用户要求，将源码 `10f2d53`（功能修复 `6c9a6bc`）的 Release 构建沿用原发布签名覆盖安装至 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。版本 0.3.8/versionCode 11，为未发布修复构建，不替换 GitHub v0.3.8 资产。
