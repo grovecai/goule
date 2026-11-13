@@ -2,7 +2,9 @@
 
 ## v0.3.12 发布包验证（2026-11-13）
 
-版本 0.3.12/versionCode 15，发布三步顺序欢迎引导与未完成步骤恢复，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过；Release 构建通过。最终签名、元数据、标签及附件回下载结果在发布后补记，材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.12/`。
+版本 0.3.12/versionCode 15，发布三步顺序欢迎引导与未完成步骤恢复，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过；Release 构建通过。最终 APK 从干净发布提交 `708f12477db021ad1e3c7ed1ae84a5795c8398e5` 构建，包内提交记录与标签一致；包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本和非调试标记核对通过，apksigner 与 ZIP 对齐通过，证书与本轮从 GitHub 回下载的 v0.3.11 一致。
+
+23:40:56（北京时间）GitHub [v0.3.12](https://github.com/grovecai/goule/releases/tag/v0.3.12) 已发布，非草稿预发布，注解标签指向上述提交。APK 和 SHA-256 文件两项附件回下载后与本地字节、大小和摘要完全一致，GitHub 附件摘要也匹配，校验文件仅含摘要与正确 APK 名。最终 APK SHA-256 为 `08ef2097ac11e9d2ef1b302d26bd81f04f3f5b2f4fc9dece3e724014552a6711`。远程 README、标签版本说明与 Release 正文核对一致；材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.12/`，包含构建/签名记录、包内提交信息、回下载附件及 `publication-verification.json`。
 
 本次版本包不另装手机。同功能 `c4bd8ce` 已通过 Android 15/API 35 模拟器独立包五组回归，新增导航回归包含三步顺序、返回、仅同意说明后重开恢复、最后完成、断连门禁及非首次入口，测试连接状态为模拟值，不代替系统真实授权。同功能 0.3.11/code 14 已在 OPPO PLJ110（Android 16、ColorOS V16.1.0）按用户要求清除旧数据后全新安装，欢迎冷启动、安装身份和签名/摘要核对通过；未开始完整三步或代用户授权。详见 [引导回归](#2026-11-13-首次三步顺序引导) 和 [全新安装](#三步引导清除旧数据后全新安装2026-11-13)。真实授权往返、进程被杀/配置重建、白名单效果与既有遮罩/系统入口等待验范围继续保留。
 
