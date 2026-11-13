@@ -10,6 +10,16 @@
 
 最终日志位于本机 `/Users/caiyuanrui/.cache/goule-android/onboarding-three-step-final-check.log`；测试包由脚本清理，本次启动的模拟器已关闭。本轮无实体手机连接，未覆盖安装正式包或发布版本。待真机验证：OPPO 首次安装与真实授权/手机管家往返、配置重建和真实进程被杀后的恢复、短屏/大字号以及白名单防撤权效果；未请求系统无障碍授权或变更用户白名单。
 
+### 三步引导清除旧数据后全新安装（2026-11-13）
+
+用户明确要求不保留现有戒律和数据。初始无设备，用户连接后确认 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。先完成源码 `c4bd8ce` 的 Release 构建、原发布签名一致性、ZIP 对齐和包名/版本/非调试标记检查，再执行不带 `-k` 的 `adb uninstall com.goule.prototype`，返回 Success，随后全新安装，不恢复旧应用数据。ColorOS 显示未验证开发者提醒，按本次安装授权确认继续安装后，ADB 返回 Success。
+
+23:32:56（北京时间）安装完成，版本仍为 0.3.11/code 14 的未发布三步引导构建。新的 appId `10444`，首次安装与最后更新时间均为 `2026-11-13 23:32:56`；安装 APK 回拉后 SHA-256 与本地签名包相同：`d675cc15c42f8e1925870f48751a09d3049b96484d4427eb7797d653c49f4914`。包内源码提交一致，签名与 v0.3.11 发布证书相同。
+
+`am start -W` 为 COLD、Status: ok，截图确认欢迎页及「立下第一条戒律」入口。本次卸载未保留旧戒律、用量、同意记录或引导进度；系统 accessibility dump 不再包含本应用的服务授权。未开始新的欢迎引导、未同意权限说明或代替用户开启无障碍，未修改手机管家白名单，手机留在欢迎页。只记全新安装、数据清除和欢迎冷启动通过，不能视为 OPPO 上完整三步及真实授权往返已经验收。
+
+材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/three-step-clean-install-c4bd8ce/`，含卸载结果、版本/签名、前后包元数据、新 APK、欢迎页截图及 `installation-verification.json`；构建日志位于 `/Users/caiyuanrui/.cache/goule-android/onboarding-three-step-release.log`。本轮未发布新版本。
+
 ## v0.3.11 发布包验证（2026-11-13）
 
 版本 0.3.11/versionCode 14，发布手机管家风险行为拦截独立设置项及来源说明，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 与回归测试 APK 构建通过；Release 构建通过。最终 APK 从干净发布提交 `bb46001d0552196e9db72d0e4b62654d23780115` 构建，包内提交记录与标签一致；包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本和非调试标记核对通过，apksigner 和 ZIP 对齐通过，证书与本轮从 GitHub 回下载的 v0.3.10 一致。
