@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## v0.3.9 发布包验证（2026-11-13）
+
+版本 0.3.9/versionCode 12，包含最近任务返回可刷目标后的漏计修复、顶部遮罩背景延伸及本机服务诊断，继续预发布并沿用原证书。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 与 instrumentation APK 编译通过；Release 从干净发布提交 `29bdc0390b852b45fad747a0dd3ef7c13c0c5801` 构建，包名 `com.goule.prototype`、最低 Android 11、target SDK 35、无 debuggable 标记核对通过。apksigner、ZIP 对齐及与回下载 v0.3.8 发布包的证书一致性检查通过。
+
+同功能 `5d35c4a` / 0.3.8/code 11 已在 OPPO PLJ110（Android 16、ColorOS V16.1.0）原签名覆盖安装、独立包四项回归和两轮真实最近任务返回计时复测通过，详见下节。本次 0.3.9/code 12 版本包未另装手机，真实顶部遮罩、物理旋转及系统入口、自然用满与厂商风险提示等未覆盖范围继续保留，版本说明已披露撤权现场和手动恢复边界。
+
+21:24:36（北京时间）[GitHub v0.3.9](https://github.com/grovecai/goule/releases/tag/v0.3.9) 发布完成，非草稿预发布，仓库为 Public。远端注解标签解析至上述提交；正文与 `docs/release-v0.3.9.md` 一致，远程 main 的 README 与本地下载入口一致，标签内版本说明内容一致。发布附件仅 `goule-v0.3.9.apk`（3,946,607 字节）及 `goule-v0.3.9.apk.sha256`（83 字节），回下载与本地逐字节一致，GitHub digest、大小及校验文件内容全部匹配。APK SHA-256：`179d8ce2d495c6525722aba562f94b79bac87baa4d2bee63d52e2253fabc8942`。
+
+材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.9/`，包含构建/检查日志、签名包/校验文件、上一版本回下载包、证书/对齐/元数据报告、Release API 信息及发布后回下载核验记录。本轮未操作手机，后续提交仅补记实际发布结果。
+
 ## 红果计时停滞诊断（2026-11-13）
 
 用户反馈使用红果后剩余时间长时间不变，随后补充偶尔恢复、实际列表和最近任务预览都观察过。21:05（北京时间）OPPO PLJ110，Android 16、ColorOS V16.1.0，正式 0.3.8/code 11 服务 Enabled/Bound 正常，Binding/Crashed 为空；前台计时进程未冻结，RUN_ANY_IN_BACKGROUND 为 allow。起始列表红果剩余 8:46，另一观察点 8:40；21:07 约 24 秒真实红果前台后显示 8:16。25 次约 1 秒间隔的焦点采样前 24 秒均为红果 ShortSeriesActivity，随后经过桌面及戒律页；这一轮扣时符合实际停留，不代表间歇停滞已修复。
