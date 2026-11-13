@@ -6,7 +6,9 @@
 
 本次版本包不另装手机。同功能 `b4bac9e` / 0.3.9/code 12 已在 OPPO PLJ110（Android 16、ColorOS V16.1.0）原签名覆盖安装，三条戒律运行数据及服务绑定核对、新增后台白名单指引滚动显示通过，详见 [安装记录](#风险行为拦截指引覆盖安装2026-11-13)。白名单防撤权效果、首次故障帮助/恢复页、短屏/大字号及既有真实遮罩/系统入口等未覆盖范围继续保留。
 
-发布材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.10/`。APK SHA-256 为 `12d1f10da6c204b1f4a008bf32627d1e9adc7bf299c26bff0bf5e0cf690e4ddd`，校验文件仅含该摘要与 APK 名。标签、Release 与两项附件发布后另记回下载验证结果。
+最终 APK 从干净发布提交 `72b9b5b162423329e7f1f6073bbd3aa6274b40db` 构建，包内版本控制元数据确认该提交；原签名、元数据和 ZIP 对齐再次核对通过。准备构建与干净提交构建只在 `META-INF/version-control-info.textproto` 的提交记录不同，发布使用后者。最终 APK SHA-256 为 `882e2d326424fdfbf4173a0eea3e86c4819669f2de3c894235dcaa0dc3106a1e`，校验文件仅含该摘要与 APK 名。
+
+21:52:36（北京时间）GitHub [v0.3.10](https://github.com/grovecai/goule/releases/tag/v0.3.10) 已发布，非草稿预发布，注解标签指向上述干净提交。APK 和 SHA-256 文件两项附件回下载后与本地字节、大小及摘要完全一致，GitHub 附件摘要也匹配；远程 README、标签版本说明和 Release 正文均核对一致。材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.10/`，含构建/签名日志、上一版与本次回下载文件、包内提交信息和 `publication-verification.json`。
 
 ## 2026-11-13 风险行为拦截白名单指引
 
