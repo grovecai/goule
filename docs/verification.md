@@ -1,5 +1,17 @@
 # Goule 验证手册
 
+## 顶部遮罩修复包覆盖安装（2026-11-13）
+
+20:08:21（北京时间）按用户要求，将源码 `10f2d53`（功能修复 `6c9a6bc`）的 Release 构建沿用原发布签名覆盖安装至 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。版本 0.3.8/versionCode 11，为未发布修复构建，不替换 GitHub v0.3.8 资产。
+
+`assembleRelease`、apksigner、与安装前手机 APK 的证书一致性、ZIP 对齐、包名/版本及无 debuggable 标记核对通过。`adb install --no-incremental -r` 返回 Success，未卸载或清除正式数据；首次安装时间 `2026-11-11 20:28:04`、appId `10381` 保持。回拉手机 APK 与本地签名包的 SHA-256 一致：`1c6cbf919eef1bcf10853732f51af9d760fa595810d9a12b9c2cf66a3ed9535d`。
+
+启动 `am start -W` 返回 Status: ok。前后列表截图确认红果免费短剧和小红书戒律均保留 10/120 参数，红果仍禁用至 20:14/还可刷 0 秒，小红书仍还可刷 10 分钟；第三条位于首屏外，本轮不记为安装前后逐项截图核对通过。安装后 FreezeService 曾正常 Bound，Binding/Crashed 为空。
+
+实际遮罩尝试未通过：20:09 打开仍在禁用的红果时，ColorOS 显示「已拦截应用异常操控设备行为」通知，称斩心魔存在后台高风险操作并已关闭相关权限。20:09:08 系统记录 enabled services 变为空，随后 Enabled/Bound/Binding/Crashed 均为空，未留存有效遮罩。已返回正式戒律页并提示用户按系统流程重新开启；未通过 ADB 写授权，不能宣称顶部真实窗口或系统入口验收通过。当前证据不能确定是新增窗口参数、覆盖升级后的厂商策略或其他条件触发，不能将通知直接归因于某一标记。
+
+安装后再次运行默认 `./scripts/check` 通过，含仓库检查、单元测试、Lint、Debug/测试 APK 构建；本轮未再装独立包或修改产品代码。本机材料目录 `/Users/caiyuanrui/.cache/goule-releases/fullscreen-6c9a6bc/` 包含签名包、前后 APK、证书/对齐/元数据、包与服务状态、列表截图、系统拦截现场和 `check.log`；Release 构建日志为 `/Users/caiyuanrui/.cache/goule-android/fullscreen-release-build.log`。原始手机材料不提交仓库。
+
 ## 2026-11-13 禁用遮罩顶部漏底修复
 
 用户截图中状态栏露出目标 App 背景。源码确认原窗口以 `setFitInsetsTypes(systemBars | displayCutout)` 整体避让，背景无法绘制到屏幕顶部。现取消窗口 inset 裁缩，添加屏幕内布局及全边缘刘海延伸；根视图仍绘制不透明深紫背景，内容按系统栏、刘海与必要手势的最大边距避让，显隐不重复叠加。
