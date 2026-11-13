@@ -10,6 +10,8 @@
 
 实际遮罩尝试未通过：20:09 打开仍在禁用的红果时，ColorOS 显示「已拦截应用异常操控设备行为」通知，称斩心魔存在后台高风险操作并已关闭相关权限。20:09:08 系统记录 enabled services 变为空，随后 Enabled/Bound/Binding/Crashed 均为空，未留存有效遮罩。已返回正式戒律页并提示用户按系统流程重新开启；未通过 ADB 写授权，不能宣称顶部真实窗口或系统入口验收通过。当前证据不能确定是新增窗口参数、覆盖升级后的厂商策略或其他条件触发，不能将通知直接归因于某一标记。
 
+20:19（北京时间）用户报告已重新开启，同设备确认 Enabled services 含 FreezeService，Bound services 显示斩心魔，Binding/Crashed 为空。返回正式戒律页截图确认暂停提示消失，小红书、抖音、红果免费短剧三条戒律及各自 10/120 参数仍在，均为可刷/还可刷 10 分钟；红果原 20:14 截止已自然结束。当前无禁用目标，未修改正式戒律或消耗额度制造遮罩，故只将手动恢复和数据核对记为通过，顶部真实窗口及厂商风险提示是否复现仍待下次自然禁用验证。手机停留戒律页，恢复截图为材料目录中的 `recovered-rules.png`。
+
 安装后再次运行默认 `./scripts/check` 通过，含仓库检查、单元测试、Lint、Debug/测试 APK 构建；本轮未再装独立包或修改产品代码。本机材料目录 `/Users/caiyuanrui/.cache/goule-releases/fullscreen-6c9a6bc/` 包含签名包、前后 APK、证书/对齐/元数据、包与服务状态、列表截图、系统拦截现场和 `check.log`；Release 构建日志为 `/Users/caiyuanrui/.cache/goule-android/fullscreen-release-build.log`。原始手机材料不提交仓库。
 
 ## 2026-11-13 禁用遮罩顶部漏底修复
