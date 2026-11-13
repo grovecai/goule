@@ -73,16 +73,19 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val pendingStep = Page.entries.firstOrNull { it.name == store.onboardingStep }
+        onboarding = pendingStep != null
         page = when (val savedPage = savedInstanceState?.getString("page")) {
             "TIMING", "PRIVACY" -> Page.SETTINGS
             else -> Page.entries.firstOrNull { it.name == savedPage }
         }
-            ?: if (store.welcomed) Page.RULES else Page.WELCOME
+            ?: pendingStep ?: if (store.welcomed) Page.RULES else Page.WELCOME
+        if (onboarding) riskGuideOrigin = Page.BACKGROUND
         savedInstanceState?.let {
-            onboarding = it.getBoolean("onboarding")
+            onboarding = it.getBoolean("onboarding", onboarding)
             permissionOrigin = Page.valueOf(it.getString("origin", Page.WELCOME.name))
             helpOrigin = Page.valueOf(it.getString("helpOrigin", Page.RULES.name))
-            riskGuideOrigin = Page.valueOf(it.getString("riskGuideOrigin", Page.SETTINGS.name))
+            riskGuideOrigin = Page.valueOf(it.getString("riskGuideOrigin", riskGuideOrigin.name))
             pickerReturn = Page.valueOf(it.getString("pickerReturn", Page.RULES.name))
             targetId = it.getString("target")
             replacingId = it.getString("replacing")
@@ -155,7 +158,7 @@ class MainActivity : Activity() {
                 return
             }
         }
-        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND, Page.PERMISSION) &&
+        if (page in listOf(Page.RULES, Page.DETAIL, Page.SETTINGS, Page.PICKER, Page.BACKGROUND, Page.PERMISSION, Page.RISK_INTERCEPTION) &&
             (targetsChanged || previous != appState || visibleSignature != signature())
         ) render(keepScroll = true)
         else liveTextUpdates.forEach { it() }
@@ -177,7 +180,7 @@ class MainActivity : Activity() {
             Page.RULES -> store.rules.flatMap {
                 listOf(it.packageName, it.label, it.useMinutes.toString(), it.blockMinutes.toString(), ruleStatus(it, now))
             } + setupStatus()
-            Page.BACKGROUND, Page.SETTINGS -> listOf(setupStatus())
+            Page.BACKGROUND, Page.SETTINGS, Page.RISK_INTERCEPTION -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), usageWindowLabel(it, now),
                     (it.editWait(now) == 0L).toString(), (it.removeWait(now) == 0L).toString(), setupStatus())
@@ -188,6 +191,9 @@ class MainActivity : Activity() {
 
     private fun go(destination: Page) {
         page = destination
+        if (onboarding && destination in listOf(Page.PERMISSION, Page.BACKGROUND, Page.RISK_INTERCEPTION)) {
+            store.saveOnboardingStep(destination.name)
+        }
         render()
     }
 
@@ -375,9 +381,15 @@ class MainActivity : Activity() {
     private fun guideHeader(title: String, status: String?, purpose: String) {
         up()
         content.addView(heading(title))
-        if (onboarding && page in listOf(Page.PERMISSION, Page.BACKGROUND)) content.addView(copyText(
-            if (page == Page.PERMISSION) "第 1 步，共 2 步" else "第 2 步，共 2 步", 14f, NIGHT_MUTED,
-        ))
+        if (onboarding) {
+            val step = when (page) {
+                Page.PERMISSION -> 1
+                Page.BACKGROUND -> 2
+                Page.RISK_INTERCEPTION -> 3
+                else -> null
+            }
+            if (step != null) content.addView(copyText("第 $step 步，共 3 步", 14f, NIGHT_MUTED))
+        }
         if (status != null) content.addView(tag(status))
         content.addView(copyText(purpose, 14f, NIGHT_MUTED))
     }
@@ -411,7 +423,7 @@ class MainActivity : Activity() {
                 if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
             })
         }
-        content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
+        if (!onboarding) content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
         content.addView(button("下一步：允许后台运行", soft = true) {
             if (appState != ServiceState.ON) {
                 toast("请先开启无障碍服务并等待连接")
@@ -845,17 +857,16 @@ class MainActivity : Activity() {
         content.addView(copyText("锁定「斩心魔」的最近任务，可减少一键清理的影响。", 15f))
         content.addView(copyText(recentTaskLockHelp(), 15f))
         content.addView(copyText("这些设置不能保证服务始终运行。若清理后出现「连接中断」，请到无障碍设置中先关闭再开启服务，返回后确认「已设置」。", 14f, NIGHT_MUTED))
-        content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
-        content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
+        if (!onboarding) content.addView(button("风险行为拦截白名单", soft = true) { openRiskInterceptionGuide() })
+        val next = if (onboarding) "下一步：风险行为拦截白名单"
+            else if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律"
+        content.addView(button(next, primary = true) {
             if (appState != ServiceState.ON) {
                 permissionOrigin = Page.BACKGROUND
                 go(Page.PERMISSION)
                 return@button
             }
-            store.welcome()
-            onboarding = false
-            awaitingFirstConnection = false
-            if (store.rules.isEmpty()) openPicker() else go(Page.RULES)
+            if (onboarding) openRiskInterceptionGuide() else completeSetup()
         }.apply {
             isEnabled = setupMissing().isEmpty()
             alpha = if (isEnabled) 1f else .45f
@@ -870,7 +881,26 @@ class MainActivity : Activity() {
     private fun riskInterceptionSettings() {
         guideHeader("风险行为拦截白名单", null, "按手机厂商提供的服务单独设置，减少无障碍服务被拦截关闭的影响。")
         content.addView(copyText(riskInterceptionHelp(), 15f))
-        content.addView(button("返回", primary = true) { back() })
+        if (onboarding) {
+            content.addView(copyText("没有此服务时可直接继续。若已设置白名单，请确认无障碍服务仍已开启。", 14f, NIGHT_MUTED))
+            if (appState != ServiceState.ON) content.addView(button("检查无障碍服务", soft = true) {
+                permissionOrigin = Page.BACKGROUND
+                go(Page.PERMISSION)
+            })
+            content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
+                if (appState == ServiceState.ON) completeSetup()
+            }.apply {
+                isEnabled = setupMissing().isEmpty()
+                alpha = if (isEnabled) 1f else .45f
+            })
+        } else content.addView(button("返回", primary = true) { back() })
+    }
+
+    private fun completeSetup() {
+        store.welcome()
+        onboarding = false
+        awaitingFirstConnection = false
+        if (store.rules.isEmpty()) openPicker() else go(Page.RULES)
     }
 
     private fun policyText(text: String, emphasis: String): TextView {
@@ -932,7 +962,7 @@ class MainActivity : Activity() {
             Page.DISCARD -> go(Page.FORM)
             Page.HELP -> go(helpOrigin)
             Page.BACKGROUND -> if (onboarding) go(Page.PERMISSION) else go(Page.SETTINGS)
-            Page.RISK_INTERCEPTION -> go(riskGuideOrigin)
+            Page.RISK_INTERCEPTION -> go(if (onboarding) Page.BACKGROUND else riskGuideOrigin)
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null

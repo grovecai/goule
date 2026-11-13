@@ -22,7 +22,8 @@ internal class RuleStore private constructor(context: Context) {
     var onConfigurationChanged: (() -> Unit)? = null
 
     val consent: Boolean get() = legacy.getBoolean(CONSENT_KEY, false)
-    val welcomed: Boolean get() = prefs.getBoolean("welcomed", false) || consent
+    val onboardingStep: String? get() = prefs.getString("onboardingStep", null)
+    val welcomed: Boolean get() = onboardingStep == null && (prefs.getBoolean("welcomed", false) || consent)
     val activated: Boolean get() = prefs.getBoolean("activated", false)
 
     init {
@@ -36,7 +37,8 @@ internal class RuleStore private constructor(context: Context) {
     }
 
     fun now() = clockStart + SystemClock.elapsedRealtime() - anchorElapsed
-    fun welcome() { prefs.edit().putBoolean("welcomed", true).apply() }
+    fun saveOnboardingStep(step: String) { prefs.edit().putString("onboardingStep", step).apply() }
+    fun welcome() { prefs.edit().putBoolean("welcomed", true).remove("onboardingStep").apply() }
     fun approve() { legacy.edit().putBoolean(CONSENT_KEY, true).apply() }
     fun activate() { prefs.edit().putBoolean("activated", true).apply() }
 

@@ -74,10 +74,14 @@ class PageRefreshInstrumentation : Instrumentation() {
                 }
             }
             ForegroundTimingChecks.run(context) { action -> onMain { action() } }
+            onMain { activity.finish() }
+            waitForIdleSync()
+            OnboardingFlowChecks.run(this)
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
                 "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
                 "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
-                "PASS: usable target keeps counting after recents closes and stops on exit\n")
+                "PASS: usable target keeps counting after recents closes and stops on exit\n" +
+                "PASS: onboarding visits three steps in order and resumes before completion\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")
