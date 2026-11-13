@@ -2,7 +2,9 @@
 
 ## v0.3.11 发布包验证（2026-11-13）
 
-版本 0.3.11/versionCode 14，发布手机管家风险行为拦截独立设置项及来源说明，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 与回归测试 APK 构建通过；Release 构建通过。最终签名、元数据、标签及附件回下载结果在发布后补记，材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.11/`。
+版本 0.3.11/versionCode 14，发布手机管家风险行为拦截独立设置项及来源说明，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 与回归测试 APK 构建通过；Release 构建通过。最终 APK 从干净发布提交 `bb46001d0552196e9db72d0e4b62654d23780115` 构建，包内提交记录与标签一致；包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本和非调试标记核对通过，apksigner 和 ZIP 对齐通过，证书与本轮从 GitHub 回下载的 v0.3.10 一致。
+
+22:33:48（北京时间）GitHub [v0.3.11](https://github.com/grovecai/goule/releases/tag/v0.3.11) 已发布，非草稿预发布，注解标签指向上述提交。APK 和 SHA-256 文件两项附件回下载字节、大小及摘要与本地完全匹配，GitHub 附件摘要也一致；校验文件仅含摘要与正确 APK 名。最终 APK SHA-256 为 `11a3a7c92cd6cd516f3d197083a8a67dfded8953ff5fa4989f0f688c39525b9b`。远程 README、标签版本说明与 Release 正文核对一致；材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.11/`，包含构建/签名记录、包内提交信息、回下载附件及 `publication-verification.json`。
 
 本次版本包不另装手机。同功能 `a0183af` / 0.3.10/code 13 已原签名覆盖安装 OPPO PLJ110（Android 16、ColorOS V16.1.0），保留三条戒律和参数、当前额度及原周期相位，服务绑定正常，设置独立条目和完整手机管家指引已显示，详见 [安装记录](#独立手机管家指引覆盖安装2026-11-13)。各来源返回/重建、首次、短屏/大字号的完整回归和白名单防撤权效果仍待验证，既有真实遮罩与系统入口的未覆盖范围继续保留。
 
