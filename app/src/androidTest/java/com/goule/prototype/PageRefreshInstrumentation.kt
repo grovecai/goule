@@ -73,9 +73,11 @@ class PageRefreshInstrumentation : Instrumentation() {
                     "Existing detail counter did not receive its independent reset"
                 }
             }
+            ForegroundTimingChecks.run(context) { action -> onMain { action() } }
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
                 "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
-                "PASS: overlay edge background and stable system/cutout/gesture insets\n")
+                "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
+                "PASS: usable target keeps counting after recents closes and stops on exit\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

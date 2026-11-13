@@ -6,6 +6,12 @@
 
 源码检查列表在 onResume 立即刷新并每秒原位更新，内存规则由 Activity/Service 共用，约 5 秒落盘不应造成相同长度的显示延迟。为继续定位，增加 Service dump：只保留配置目标的身份，输出服务/前台/采样状态、已记用量和最近 32 条分类观察；其他 App 只记 other/self/launcher 分类，不读事件文本或窗口内容，诊断只驻内存。`./scripts/check` 通过，产品识别及计时算法尚未修改。材料目录为本机 `/Users/caiyuanrui/.cache/goule-android/redfruit-timing-20261113/`，手机材料不提交仓库。
 
+21:10 原签名覆盖安装诊断构建 `999051e` 后捕获明确复现：红果目标事件 uptime `115606356` 开启计时，约 602 ms 后桌面发送 PANE_DISAPPEARED（changes=32），服务将 `foreground` 从红果清为 null、取消 tick。此时系统焦点仍为红果 ShortSeriesActivity，eligible=true、服务 connected/consent=true，连续约 15 秒 dump 的 usedMs 固定为 144146，samples 固定为 1、rejected=0。根因为服务仅在 overlay 存在时调用 `recents.targetResumed`，可刷目标没有获得最近任务返回的尾随事件保护；不是本轮页面刷新延迟或采样大间隔丢弃。
+
+修复将最近任务返回保护用于所有已配置目标，真正离开仍正常停止。新增独立包 `ForegroundTimingChecks` 在生产 FreezeService 重放最近任务出现→可刷目标→600 ms 后最近任务消失，断言累计继续超过 1 秒，再进入最近任务后累计停止；接入默认构建与 `scripts/check-ui`。测试只修改独立包数据，不请求真实无障碍授权、不创建遮罩。
+
+自动验证：Debug/Release 各 41 项单元测试、Lint、Debug 与测试 APK 构建通过。首次附加设备检查在既有列表滚动位置断言失败，计时事件回归尚未执行；未修改相关产品代码，重新执行 `scripts/check-ui` 后，同设备四项 PASS（页面固定重置/原视图与滚动、横屏按钮、背景及安全区、可刷目标最近任务返回计时和离开停止）。测试包自动移除，日志分别为 `fix-check.log` 与 `ui-retry.log`。该结果验证本次生产 Service 接线，不能将它扩展为所有厂商临时窗口路径已覆盖。
+
 ## 顶部遮罩修复包覆盖安装（2026-11-13）
 
 20:08:21（北京时间）按用户要求，将源码 `10f2d53`（功能修复 `6c9a6bc`）的 Release 构建沿用原发布签名覆盖安装至 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。版本 0.3.8/versionCode 11，为未发布修复构建，不替换 GitHub v0.3.8 资产。

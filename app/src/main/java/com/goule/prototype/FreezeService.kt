@@ -151,7 +151,8 @@ class FreezeService : AccessibilityService() {
         }
         val target = name?.takeIf { it in eligible }
         reconcile(target)
-        if (target != null && overlay != null) recents.targetResumed(event.eventTime) else recents.reset()
+        // Recents' trailing launcher events also arrive while an app is still usable.
+        if (target != null) recents.targetResumed(event.eventTime) else recents.reset()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {

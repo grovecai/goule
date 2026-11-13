@@ -22,6 +22,7 @@ printf '%s\n' "$goule_result"
 [[ "$goule_result" == *"PASS: list/detail fixed resets"* &&
    "$goule_result" == *"PASS: overlay landscape actions"* &&
    "$goule_result" == *"PASS: overlay edge background"* &&
+   "$goule_result" == *"PASS: usable target keeps counting"* &&
    "$goule_result" != *"INSTRUMENTATION_FAILED"* && "$goule_result" != *"FAIL:"* ]]
 if [[ -n "${GOULE_UI_OUTPUT_DIR:-}" ]]; then
     mkdir -p "$GOULE_UI_OUTPUT_DIR"
