@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-2026-11-13 已准备 v0.3.8/code 11 横屏禁用页优化预发布，README 下载入口和 [版本说明](docs/release-v0.3.8.md) 已更新。`./scripts/check` 通过，Debug/Release 各 41 项测试无失败，Lint 和 Debug/测试 APK 构建通过；待从干净发布提交构建 Release、沿用原证书签名并发布校验。本次版本包不另装手机，既有 OPPO 功能构建的实测边界保留，见 [发布验证](docs/verification.md#v038-发布包验证2026-11-13)。
+2026-11-13 16:28（北京时间）[v0.3.8 预发布版](https://github.com/grovecai/goule/releases/tag/v0.3.8) 已发布，版本码 11，标签指向 07b3ea3，包含横屏禁用页分栏、固定可见的退出操作和窗口尺寸重排。README 下载入口及 [版本说明](docs/release-v0.3.8.md) 已更新。`./scripts/check`、Release 构建、版本/签名/ZIP 对齐通过，Debug/Release 各 41 项测试无失败；证书与回下载 v0.3.7 一致。APK 与 SHA-256 两项资产发布后回下载字节、大小和摘要均一致，Release 为非草稿预发布。本次版本包未另装手机，既有 OPPO 功能构建的实测边界保留，见 [发布验证](docs/verification.md#v038-发布包验证2026-11-13)。
 
 2026-11-13 15:58（北京时间）已按用户要求，将横屏优化源码 afb5f23 的原签名 Release 覆盖安装到 OPPO PLJ110（Android 16、ColorOS V16.1.0），版本 0.3.7/code 10，未发布新版本。Release 构建、签名一致性和 ZIP 对齐通过；手机安装包 SHA-256 与本地一致，首次安装时间和 appId 保持。启动及无障碍实际绑定正常，已有戒律和红果有效禁用截止保留，手机上的真实横屏操作仍待用户使用复核，见 [安装记录](docs/verification.md#横屏优化包覆盖安装2026-11-13)。
 

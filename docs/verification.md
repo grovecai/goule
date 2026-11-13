@@ -3,9 +3,13 @@
 
 ## v0.3.8 发布包验证（2026-11-13）
 
-版本升级至 0.3.8/versionCode 11，发布横屏禁用页分栏与实际窗口尺寸重排，继续预发布并沿用原证书。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和页面回归 APK 构建通过；版本说明及 README 下载入口已更新。后续从干净发布提交构建 Release 并验证签名、版本和 ZIP 对齐，发布后回下载核对资产和 SHA-256，实际结果另记。
+版本升级至 0.3.8/versionCode 11，发布横屏禁用页分栏与实际窗口尺寸重排，继续预发布并沿用原证书。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和页面回归 APK 构建通过；版本说明及 README 下载入口已更新。Release 从干净发布提交 `07b3ea3fe0387d1a807697af9d18ebc714ad5df7` 构建，包名 `com.goule.prototype`、0.3.8/code 11、最低 Android 11 及无 debuggable 标记核对通过，apksigner 和 ZIP 对齐通过；证书与从 GitHub 回下载的 v0.3.7 发布 APK 一致。
 
 OPPO PLJ110（Android 16、ColorOS V16.1.0）同功能 afb5f23 / 0.3.7/code 10 原签名覆盖安装及独立布局回归已通过，见下节；本次 0.3.8/code 11 版本包不另装手机，不以离屏布局的尺寸往返代替真实服务遮罩的物理旋转/系统全局操作验收。真实禁用遮罩端到端用例和更多设备仍待复测。
+
+16:28（北京时间）[GitHub v0.3.8](https://github.com/grovecai/goule/releases/tag/v0.3.8) 发布完成，非草稿预发布，远端注解标签解析到上述发布提交。仓库为 Public，Release 正文与 `docs/release-v0.3.8.md` 一致；远程 main 的 README 与本地一致，APK/Release 下载入口已更新。资产仅 `goule-v0.3.8.apk`（3,942,511 字节）和 `goule-v0.3.8.apk.sha256`（83 字节），均回下载与本地逐字节一致，GitHub asset digest、大小及校验文件内容全部匹配。APK SHA-256：`745a3eb8fb3364ef029a2b910e79621f03eb346d2e6e6d9010960efa8bf87e89`。
+
+材料保存在本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.8/`，包括构建日志、签名 APK/校验文件、上一版回下载包、签名/对齐/元数据报告、发布 API 信息及回下载验证结果。本轮没有重新安装手机或修改戒律，后续提交仅补记实际发布结果。
 
 ## 2026-11-13 禁用页横屏适配
 
