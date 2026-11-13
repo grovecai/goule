@@ -8,7 +8,11 @@
 
 设备尝试：OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。独立 `com.goule.uiverify` 安装停在系统确认并超时，ADB 返回 `Failure [-99]`；没有运行 instrumentation，不能记为布局或实际服务窗口通过。会话已失败，独立应用及 `.test` 包均未安装；未覆盖正式 `com.goule.prototype`、未修改正式戒律或无障碍授权。
 
-待复测：完成独立包 Android 布局回归；原签名正式包覆盖安装后，核对顶部背景、横竖屏刘海、通知栏下拉、系统返回/桌面/最近任务、两种退出操作及触摸拦截。布局回归不创建真实无障碍窗口，不能代替服务窗口与系统入口的端到端检查。本轮无新版本发布。构建与安装尝试日志保存在本机 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-check.log`。
+随后用户要求重装并完成两次系统安装确认。同设备独立 Debug 包 0.3.8/code 11 的 `scripts/check-ui` 返回成功，instrumentation 输出三项 PASS：列表/详情固定重置保留原视图和滚动位置；横屏按钮在三档字号和尺寸往返下完整可点；边缘背景及稳定的系统栏/刘海/手势边距。运行期间另用 `am start -W` 唤起测试 MainActivity（Status: ok），最终全部断言通过。导出六张 360×640 与 640×320 dp 渲染图，核对常规竖屏和两倍字号横屏：顶部/侧边均为不透明紫底，横屏操作完整，对白独立裁剪/滚动。该证据为 Android 实际测量及离屏绘制，不是服务窗口截图。脚本自动卸载两个测试包；正式 FreezeService 仍在 Bound services 中，Binding/Crashed 为空。
+
+重试日志为本机 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-retry.log`，渲染图目录 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-20261113/`。
+
+待复测：原签名正式包覆盖安装后，核对真实窗口顶部背景、横竖屏刘海、通知栏下拉、系统返回/桌面/最近任务、两种退出操作及触摸拦截。布局回归不创建真实无障碍窗口，不能代替服务窗口与系统入口的端到端检查。本轮未覆盖安装正式包、无新版本发布。首轮构建与安装尝试日志保存在本机 `/Users/caiyuanrui/.cache/goule-android/fullscreen-insets-check.log`。
 
 
 ## v0.3.8 发布包验证（2026-11-13）

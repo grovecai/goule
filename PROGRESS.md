@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-2026-11-13 已修复禁用遮罩顶部漏底的窗口配置：背景延伸至系统栏和刘海边缘，文字/按钮在视图内按系统栏、刘海和必要手势的最大安全边距布局，系统栏显隐不改变该边距。Debug/Release 各 41 项单元测试、Lint 和 Debug/测试 APK 编译通过；新增边缘背景与 WindowInsets 回归接入 `./scripts/check` 的独立设备检查。OPPO PLJ110（Android 16、ColorOS V16.1.0）测试包安装在系统确认阶段超时返回 `Failure [-99]`，未执行 instrumentation；正式包未覆盖安装，顶部真实显示和系统操作仍待复测，见 [本轮记录](docs/verification.md#2026-11-13-禁用遮罩顶部漏底修复)。
+2026-11-13 已修复禁用遮罩顶部漏底的窗口配置：背景延伸至系统栏和刘海边缘，文字/按钮在视图内按系统栏、刘海和必要手势的最大安全边距布局，系统栏显隐不改变该边距。`./scripts/check` 通过，Debug/Release 各 41 项单元测试、Lint 和 Debug/测试 APK 编译通过；新增边缘背景与 WindowInsets 回归接入独立设备检查。OPPO PLJ110（Android 16、ColorOS V16.1.0）首轮安装确认超时，用户完成重装后独立包三项 PASS：边缘背景/安全边距、横屏按钮及既有页面刷新；渲染图已核对，测试包已清理，正式服务仍绑定。正式包未覆盖安装，真实服务窗口顶部及系统操作仍待复测，见 [本轮记录](docs/verification.md#2026-11-13-禁用遮罩顶部漏底修复)。
 
 2026-11-13 16:28（北京时间）[v0.3.8 预发布版](https://github.com/grovecai/goule/releases/tag/v0.3.8) 已发布，版本码 11，标签指向 07b3ea3，包含横屏禁用页分栏、固定可见的退出操作和窗口尺寸重排。README 下载入口及 [版本说明](docs/release-v0.3.8.md) 已更新。`./scripts/check`、Release 构建、版本/签名/ZIP 对齐通过，Debug/Release 各 41 项测试无失败；证书与回下载 v0.3.7 一致。APK 与 SHA-256 两项资产发布后回下载字节、大小和摘要均一致，Release 为非草稿预发布。本次版本包未另装手机，既有 OPPO 功能构建的实测边界保留，见 [发布验证](docs/verification.md#v038-发布包验证2026-11-13)。
 
