@@ -1,5 +1,13 @@
 # Goule 验证手册
 
+## 2026-11-13 风险行为拦截白名单指引
+
+根据用户反馈补充指引：手机上的「风险行为拦截」程序或功能可能关闭无障碍服务，需要将「斩心魔」加入该功能的白名单。后台页第 4 组、首次无障碍页「遇到问题」及服务恢复页复用同一文案；恢复页直接显示。步骤包含查找程序/系统安全功能、加入白名单、服务关闭后手动开启或中断后关闭再开启、返回确认「已设置」，并提示入口名称因系统而异、没有可略过。README 同步，未增加后台状态检测或门禁。
+
+`./scripts/check` 首次因当前 shell 未配置 Java Runtime 停止；指定本机缓存 JDK 17 与 Android SDK 后完整通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和测试 APK 构建通过。检查日志保存在本机 `/Users/caiyuanrui/.cache/goule-android/risk-interception-guide-check.log`。仅调整帮助文案与展示，未新增复述文案的测试。
+
+本轮未安装手机或发布版本，未修改系统白名单或无障碍开关。此前 OPPO PLJ110（Android 16、ColorOS V16.1.0）的风险拦截撤权现场见 [覆盖安装记录](#顶部遮罩修复包覆盖安装2026-11-13)，不作为白名单效果已验证的证据。待在该设备核对新指引滚动与短屏/大字号显示、实际白名单入口和加入后的撤权是否复现；不承诺白名单可避免所有系统撤权。
+
 ## v0.3.9 发布包验证（2026-11-13）
 
 版本 0.3.9/versionCode 12，包含最近任务返回可刷目标后的漏计修复、顶部遮罩背景延伸及本机服务诊断，继续预发布并沿用原证书。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 与 instrumentation APK 编译通过；Release 从干净发布提交 `29bdc0390b852b45fad747a0dd3ef7c13c0c5801` 构建，包名 `com.goule.prototype`、最低 Android 11、target SDK 35、无 debuggable 标记核对通过。apksigner、ZIP 对齐及与回下载 v0.3.8 发布包的证书一致性检查通过。

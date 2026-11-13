@@ -382,7 +382,10 @@ class MainActivity : Activity() {
         val recovering = appState.needsRecovery
         guideHeader("无障碍服务", serviceStatusLabel(), if (recovering) servicePausedMessage
             else "识别目标 App、累计使用时间，并在用满后显示禁用页。")
-        if (recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
+        if (recovering) {
+            content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
+            content.addView(copyText(riskInterceptionHelp(), 14f, NIGHT_MUTED))
+        }
         content.addView(copyText(if (appState == ServiceState.INTERRUPTED)
             "1. 打开系统设置，在「已下载的应用」中找到「斩心魔」。\n2. 先关闭服务，再重新开启；若有安全提醒，按系统提示确认。\n3. 返回此页，等待状态变为「已设置」后，戒律才恢复执行。"
             else "1. 打开系统设置。\n2. 在「已下载的应用」中找到「斩心魔」，开启服务。\n3. 返回此页，等待状态变为「已设置」。"))
@@ -401,7 +404,10 @@ class MainActivity : Activity() {
             render(keepScroll = true)
         })
         if (showSetupHelp) {
-            if (!recovering) content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
+            if (!recovering) {
+                content.addView(copyText(accessibilityRecoveryHelp(), 14f, NIGHT_MUTED))
+                content.addView(copyText(riskInterceptionHelp(), 14f, NIGHT_MUTED))
+            }
             content.addView(copyText(restrictedSettingsHelp(), 14f, NIGHT_MUTED))
             content.addView(button("打开应用信息", soft = true) {
                 if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
@@ -836,6 +842,8 @@ class MainActivity : Activity() {
         content.addView(copyText("锁定「斩心魔」的最近任务，可减少一键清理的影响。", 15f))
         content.addView(copyText(recentTaskLockHelp(), 15f))
         content.addView(copyText("这些设置不能保证服务始终运行。若清理后出现「连接中断」，请到无障碍设置中先关闭再开启服务，返回后确认「已设置」。", 14f, NIGHT_MUTED))
+        content.addView(heading("4. 风险行为拦截白名单", 18f))
+        content.addView(copyText(riskInterceptionHelp(), 15f))
         content.addView(button(if (store.rules.isEmpty()) "继续添加心魔" else "返回戒律", primary = true) {
             if (appState != ServiceState.ON) {
                 permissionOrigin = Page.BACKGROUND
