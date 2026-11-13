@@ -1,5 +1,26 @@
 # Goule 验证手册
 
+
+## 2026-11-13 禁用页横屏适配
+
+禁用页改为按遮罩的实际可用窗口尺寸布局：横屏左侧插画，右侧对白和固定在滚动区外的解禁时刻/两个退出按钮；竖屏保持上下漫画构图。同一个窗口收到尺寸变化后重排，服务计时和系统操作继续使用既有回调；系统栏/刘海仍由窗口避让，额外保留四侧必要手势边距。
+
+`./scripts/check` 通过：仓库检查、Debug/Release 各 41 项 JVM 单元测试（零失败）、Lint、Debug APK 和 instrumentation APK 构建通过。新增 `FreezeOverlayLayoutChecks` 接入既有独立包 `scripts/check-ui`，`./scripts/check` 指定 `GOULE_UI_DEVICE` 时自动运行；可用 `GOULE_UI_OUTPUT_DIR` 导出渲染图。布局断言在 Android 上直接实例化生产 `FreezeOverlayView`，不读取或修改正式戒律。
+
+OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`，本轮独立 Debug 包 `com.goule.uiverify`（0.3.7/code 10）实测通过。用户完成两个系统安装确认后，instrumentation 输出两条 PASS：既有列表/详情固定周期刷新保留根视图及滚动位置；横屏按钮在窗口重排和大字号下可见并可点。
+
+| 布局场景 | 实际结果 |
+| --- | --- |
+| 同一视图尺寸往返 | 每档字号依次测量/布局 360×640 → 640×320 → 800×360 → 640×240 → 360×640 → 640×320 dp，截止文案始终保留；这是实际 Android 布局重排，未代替物理旋转服务窗口的实测 |
+| 短横屏与大字号 | 1、1.3、2 倍字号均通过；长中文 App 名和跨日中文 12 小时时间正常换行，对白可滚动 |
+| 按钮与安全区 | 每轮横屏两个按钮均完整包含于扣除四侧预置安全边距的区域，触摸高度至少 48 dp，祖先不含 ScrollView；从遮罩根节点向按钮中心分发 DOWN/UP 均到达按钮，分别验证退出回调。离屏布局下点击回调另以 performClick 检查，未触发系统最近任务或回桌面 |
+| 渲染核对 | 导出 640×320 dp 三档字号 PNG，核对正常与两倍字号：插画、解禁时刻和两个按钮均完整；大字号下对白在独立区域裁剪/滚动，不挤掉操作 |
+| 清理与正式服务 | 两个独立测试包已卸载，正式 `com.goule.prototype` 保留；Bound services 仍含 FreezeService，Binding/Crashed 为空。未覆盖安装正式 APK、未修改正式数据或发布新版本 |
+
+首轮 OPPO 安装等待系统确认，取消后按用户要求重新安装并完成上述检查。并行尝试的 Android 15 x86_64 模拟器冷启动期间 instrumentation 未完成，已停止、移除独立测试包并关闭本轮模拟器，不记为通过。材料保存在本机 `/Users/caiyuanrui/.cache/goule-android/landscape-oppo-check.log` 和 `/Users/caiyuanrui/.cache/goule-android/landscape-oppo-20261113/`。
+
+待复测：原签名正式包覆盖安装后，真实禁用目标上的横竖屏物理旋转、系统安全区/刘海与两种导航、最近任务退出/点回、回洞府、触摸不透传、到期撤罩及锁屏/重连。当前布局测试不创建实际无障碍遮罩或执行系统全局操作，不据此宣称上述端到端路径通过。
+
 ## v0.3.7 发布包验证（2026-11-13）
 
 版本升级为 0.3.7/versionCode 10，发布固定周期及页面稳定修复，包含 v0.3.6 后的连接中断恢复和后台锁定指引。`./scripts/check` 通过：Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和页面回归 APK 构建通过；`assembleRelease` 通过。原有 OPPO PLJ110（Android 16、ColorOS 16.1.0）57f4d11 功能构建的安装与独立页面回归记录保留，本次版本包未另装手机，不以旧构建结果代替版本包全量实测。

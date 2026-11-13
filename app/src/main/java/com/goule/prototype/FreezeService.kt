@@ -1,33 +1,22 @@
 package com.goule.prototype
 
 import android.accessibilityservice.AccessibilityService
-import android.animation.ValueAnimator
 import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.util.Log
-import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.ImageView
-import android.widget.ScrollView
-import android.widget.LinearLayout
 import android.widget.Toast
 
 class FreezeService : AccessibilityService() {
@@ -192,115 +181,18 @@ class FreezeService : AccessibilityService() {
         val key = rule.packageName to deadline
         if (key == overlayRule) return
         hideOverlay()
-        val paper = Color.rgb(255, 240, 220)
-        val backdrop = Color.rgb(32, 17, 37)
-        val outline = Color.rgb(50, 29, 43)
-        val view = object : ScrollView(this) {
-            override fun getAccessibilityClassName(): CharSequence = OVERLAY_EVENT_CLASS
-        }.apply {
-            isFillViewport = true
-            isClickable = true
-            setBackgroundColor(backdrop)
-            setOnApplyWindowInsetsListener { root, insets ->
-                val bottom = insets.getInsets(WindowInsets.Type.mandatorySystemGestures()).bottom
-                root.setPadding(0, 0, 0, bottom)
-                insets
-            }
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            isClickable = true
-        }
-        view.addView(content)
-        val comic = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        content.addView(comic, LinearLayout.LayoutParams(-1, -2, 1f))
-        val height = resources.configuration.screenHeightDp
-        val shortScreen = height < 700
-        comic.addView(ImageView(this).apply {
-            setImageResource(R.drawable.discipline_elder)
-            contentDescription = "戒律长老怒视前方，指向屏幕大声喝止"
-            adjustViewBounds = !shortScreen
-            scaleType = if (shortScreen) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(-1, if (shortScreen) dp((height * .30f).toInt()) else -2))
-        val speech = FrameLayout(this).apply { clipChildren = false }
-        val dialogue = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(15), dp(16), dp(17))
-            background = surface(paper, 5).apply { setStroke(dp(3), outline) }
-        }
-        speech.addView(dialogue, FrameLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
-        speech.addView(View(this).apply {
-            background = surface(paper, 0)
-            rotation = 45f
-        }, FrameLayout.LayoutParams(dp(16), dp(16), Gravity.TOP or Gravity.START).apply {
-            marginStart = dp((resources.configuration.screenWidthDp * .34f).toInt())
-            topMargin = dp(3)
-        })
-        val dialogueWidth = resources.configuration.screenWidthDp - 56
-        val headlineSize = (dialogueWidth * .19f).coerceIn(40f, 64f)
-        val appLineSize = (dialogueWidth * .095f).coerceIn(20f, 33f)
-        dialogue.addView(copyText("够了！", headlineSize, Color.rgb(172, 48, 32), true).apply {
-            isAccessibilityHeading = true
-            letterSpacing = -.055f
-        })
-        val prefix = "别刷 "
-        val warning = SpannableString("$prefix${rule.label} 了！").apply {
-            setSpan(ForegroundColorSpan(0xff70238a.toInt()), prefix.length,
-                prefix.length + rule.label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        dialogue.addView(copyText(warning, appLineSize, outline, true).apply {
-            letterSpacing = -.055f
-            setLineSpacing(0f, 1.13f)
-        })
-        dialogue.addView(copyText("再刷下去，你还飞不飞升了？", 18f, outline, true).apply {
-            setPadding(0, dp(8), 0, 0)
-        })
-        comic.addView(speech, LinearLayout.LayoutParams(-1, -2).apply {
-            marginStart = dp(12)
-            marginEnd = dp(12)
-            topMargin = -dp(18)
-        })
-        val footer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(16), dp(20), dp(12))
-        }
-        content.addView(footer)
-        footer.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            addView(copyText("解禁时刻", 14f, Color.rgb(232, 190, 176), true), LinearLayout.LayoutParams(0, -2, 1f))
-            addView(copyText(deadlineLabel(deadline, now), 24f, paper, true))
-        })
-        footer.addView(Button(this).apply {
-            setText(R.string.close_target)
-            setTextColor(outline)
-            isAllCaps = false
-            stateListAnimator = null
-            minHeight = dp(44)
-            backgroundTintList = null
-            background = surface(paper, 9)
-            setOnClickListener {
+        val view = FreezeOverlayView(this, rule.label, deadlineLabel(deadline, now),
+            onCloseTarget = {
                 if (performGlobalAction(GLOBAL_ACTION_RECENTS)) {
                     clearForeground()
-                    Toast.makeText(this@FreezeService, R.string.close_target_hint, Toast.LENGTH_SHORT).show()
-                } else Toast.makeText(this@FreezeService, R.string.recents_failed, Toast.LENGTH_SHORT).show()
-            }
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        footer.addView(Button(this).apply {
-            setText(R.string.go_home)
-            setTextColor(paper)
-            isAllCaps = false
-            stateListAnimator = null
-            minHeight = dp(44)
-            backgroundTintList = null
-            background = surface(backdrop, 9, Color.rgb(143, 107, 94))
-            setOnClickListener {
+                    Toast.makeText(this, R.string.close_target_hint, Toast.LENGTH_SHORT).show()
+                } else Toast.makeText(this, R.string.recents_failed, Toast.LENGTH_SHORT).show()
+            },
+            onGoHome = {
                 if (performGlobalAction(GLOBAL_ACTION_HOME)) clearForeground()
-                else Toast.makeText(this@FreezeService, R.string.home_failed, Toast.LENGTH_SHORT).show()
-            }
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                else Toast.makeText(this, R.string.home_failed, Toast.LENGTH_SHORT).show()
+            },
+        )
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -315,10 +207,6 @@ class FreezeService : AccessibilityService() {
             windows.addView(view, params)
             overlay = view
             overlayRule = key
-            if (ValueAnimator.areAnimatorsEnabled()) {
-                speech.translationY = -dp(12).toFloat()
-                speech.animate().translationY(0f).setDuration(180).start()
-            }
         } catch (error: WindowManager.BadTokenException) {
             Log.w(TAG, "Could not attach freeze overlay", error)
         }
@@ -345,7 +233,7 @@ class FreezeService : AccessibilityService() {
 
     companion object {
         private const val TAG = "GouleFreeze"
-        private const val OVERLAY_EVENT_CLASS = "com.goule.prototype.FreezeOverlay"
+        private const val OVERLAY_EVENT_CLASS = FreezeOverlayView.EVENT_CLASS
         internal var connected = false
             private set
     }

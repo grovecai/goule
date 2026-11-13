@@ -23,6 +23,7 @@ class PageRefreshInstrumentation : Instrumentation() {
         try {
             val context = targetContext
             check(context.packageName == "com.goule.uiverify") { "UI regression requires the isolated app ID" }
+            onMain { FreezeOverlayLayoutChecks.run(context) }
             val now = System.currentTimeMillis()
             val listReset = now + 12_000
             val detailReset = now + 24_000
@@ -72,7 +73,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                     "Existing detail counter did not receive its independent reset"
                 }
             }
-            result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n")
+            result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
+                "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

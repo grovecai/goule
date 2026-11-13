@@ -20,4 +20,9 @@ trap cleanup EXIT
 goule_result=$("$goule_adb" -s "$GOULE_UI_DEVICE" shell am instrument -w "$goule_fixture.test/com.goule.prototype.PageRefreshInstrumentation")
 printf '%s\n' "$goule_result"
 [[ "$goule_result" == *"PASS: list/detail fixed resets"* &&
+   "$goule_result" == *"PASS: overlay landscape actions"* &&
    "$goule_result" != *"INSTRUMENTATION_FAILED"* && "$goule_result" != *"FAIL:"* ]]
+if [[ -n "${GOULE_UI_OUTPUT_DIR:-}" ]]; then
+    mkdir -p "$GOULE_UI_OUTPUT_DIR"
+    "$goule_adb" -s "$GOULE_UI_DEVICE" pull "/sdcard/Android/data/$goule_fixture/files/." "$GOULE_UI_OUTPUT_DIR/"
+fi
