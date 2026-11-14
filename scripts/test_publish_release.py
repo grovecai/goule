@@ -144,10 +144,12 @@ class ReleasePlannerTest(unittest.TestCase):
                          text.replace("16", "17").replace("0.3.13", "0.3.14"))
 
     def test_missing_signing_material_stops_before_gradle(self):
-        with patch.dict(os.environ, {}, clear=True), patch.object(publish, "run") as run:
+        with patch.dict(os.environ, {}, clear=True), patch.object(publish, "run") as run, \
+                patch.object(publish, "execute") as execute:
             with self.assertRaisesRegex(RuntimeError, "signing Secrets"):
                 publish.build_signed_apk(self.root / "app.apk", {}, "a" * 40)
             run.assert_not_called()
+            execute.assert_not_called()
 
     def test_foreign_certificate_is_rejected(self):
         with patch.object(publish, "android_tool", return_value="apksigner"), \

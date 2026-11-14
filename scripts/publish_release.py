@@ -32,6 +32,11 @@ def run(*args, cwd=None, timeout=300, **kwargs):
                                    timeout=timeout, **kwargs).strip()
 
 
+def execute(*args, timeout=300):
+    """Stream long build/sync steps to the Actions log instead of buffering them."""
+    subprocess.run(args, cwd=ROOT, check=True, timeout=timeout)
+
+
 def git(*args):
     return run("git", *args)
 
@@ -168,7 +173,7 @@ def prepare_source(plan, options):
     notes = Path(f'docs/release-{plan["tag"]}.md')
     if not (ROOT / notes).exists():
         (ROOT / notes).write_text(release_notes(plan, options))
-    run("./scripts/check", timeout=1200)
+    execute("./scripts/check", timeout=1200)
     git("add", CONFIG.as_posix(), STATE.as_posix(), notes.as_posix())
     git("diff", "--cached", "--check")
     git("commit", "-m", f'release: prepare {plan["tag"]}')
@@ -211,7 +216,7 @@ def build_signed_apk(output, plan, commit):
     names = ("ANDROID_RELEASE_KEYSTORE_BASE64", "ANDROID_RELEASE_STORE_PASSWORD", "ANDROID_RELEASE_KEY_PASSWORD")
     if any(not os.environ.get(name) for name in names):
         raise RuntimeError("Configure all three ANDROID_RELEASE_* signing Secrets before publishing")
-    run("./gradlew", "assembleRelease", timeout=1200)
+    execute("./gradlew", "assembleRelease", timeout=1200)
     with tempfile.TemporaryDirectory(prefix="goule-signing-", dir=os.environ.get("RUNNER_TEMP")) as temporary:
         directory = Path(temporary)
         key = directory / "release.p12"
@@ -322,7 +327,7 @@ def finalize_release(plan, commit, apk):
     progress_text = progress.read_text().replace("## 当前状态\n\n", "## 当前状态\n\n" + entry, 1)
     progress_text = re.sub(r"(?m)^更新于 \d{4}-\d{2}-\d{2}。$", f"更新于 {now[:10]}。", progress_text, count=1)
     progress.write_text(progress_text)
-    run("./scripts/check", timeout=1200)
+    execute("./scripts/check", timeout=1200)
     git("add", STATE.as_posix(), "README.md", "PROGRESS.md", result.as_posix())
     git("diff", "--cached", "--check")
     git("commit", "-m", f'docs: record verified {tag} publication')
@@ -349,7 +354,7 @@ def main():
         # Heal a code-mirror failure after a successful publication without
         # rebuilding or minting another Android version.
         if os.environ.get("GITEE_TOKEN"):
-            run(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), "--code-only", timeout=1500)
+            execute(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), "--code-only", timeout=1500)
         return
     if not os.environ.get("GITEE_TOKEN"):
         raise RuntimeError("GITEE_TOKEN is required for automatic publication to both platforms")
@@ -363,9 +368,9 @@ def main():
         apk, _ = ensure_github_release(Path(temporary), plan, commit)
         # GITHUB_TOKEN-created releases do not trigger the sibling release-event
         # workflow, so execute and await verification here instead.
-        run(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), plan["tag"], timeout=2400)
+        execute(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), plan["tag"], timeout=2400)
         finalize_release(plan, commit, apk)
-        run(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), "--code-only", timeout=1500)
+        execute(sys.executable, str(ROOT / "scripts/sync_gitee_release.py"), "--code-only", timeout=1500)
     write_summary(f'Published and verified: https://github.com/{REPOSITORY}/releases/tag/{plan["tag"]}\n\n'
                   f'Gitee: https://gitee.com/{REPOSITORY}/releases/tag/{plan["tag"]}')
 
