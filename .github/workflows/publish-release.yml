@@ -1,0 +1,65 @@
+name: Publish Android release
+
+on:
+  schedule:
+    # 08:17 Asia/Shanghai; avoid the busiest top-of-hour scheduling window.
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version (optional; otherwise advance the patch version)
+        type: string
+      notes:
+        description: Stage release notes (optional; otherwise use code commits)
+        type: string
+      prerelease:
+        description: Publish as a prerelease
+        type: boolean
+        default: true
+      force:
+        description: Publish a new version even without code changes
+        type: boolean
+        default: false
+      dry_run:
+        description: Show the release plan without building or publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-gitee-release
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  publish:
+    if: github.repository == 'grovecai/goule' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install the project Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Plan, build, publish and verify both platforms
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+          RELEASE_FORCE: ${{ inputs.force }}
+          RELEASE_DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 scripts/publish_release.py

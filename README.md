@@ -12,9 +12,11 @@
 
 ## 下载安装
 
+<!-- release-downloads:start -->
 **[国内下载斩心魔 v0.3.13 签名 APK（Gitee）](https://gitee.com/grovecai/goule/releases/download/v0.3.13/goule-v0.3.13.apk)** · [GitHub 备用下载](https://github.com/grovecai/goule/releases/download/v0.3.13/goule-v0.3.13.apk)
 
 Android 11 及以上 · [Gitee 预发布说明](https://gitee.com/grovecai/goule/releases/tag/v0.3.13) · [SHA-256 校验文件](https://gitee.com/grovecai/goule/releases/download/v0.3.13/goule-v0.3.13.apk.sha256) · [GitHub 原发布](https://github.com/grovecai/goule/releases/tag/v0.3.13)
+<!-- release-downloads:end -->
 
 ## 它如何工作，有什么限制？
 
@@ -71,7 +73,7 @@ OPPO/ColorOS 的「风险行为拦截」是系统自带「手机管家」中的�
 
 窗口内容读取保持关闭，戒律和用量保存在手机上。你可以随时在系统设置关闭无障碍服务，戒律会暂停执行。
 
-## 当前版本
+## 已验证的功能与边界（v0.3.13）
 
 v0.3.13 是预发布版，修复按音量键后禁用页消失的问题。已识别的系统音量面板出现、收起或连续调节音量时，保留目标 App 的禁用页和原解禁时刻；可刷期间继续计时，返回桌面和进入设置仍正常撤下遮罩。新建戒律默认改为「刷 5 分钟，歇 115 分钟」，每 120 分钟重置一次 5 分钟额度；已有戒律保留原配置。继续保留三步欢迎引导、独立固定周期与横屏禁用页等功能。
 
@@ -84,3 +86,5 @@ v0.3.13 是预发布版，修复按音量键后禁用页消失的问题。已识
 在仓库根目录运行 `./scripts/check`，需要 Bash、Git、Python 3、JDK 17 和 Android SDK 35。查看 [Android 设计](docs/android-design.md)、[交互设计](docs/interaction-design.md)、[实施计划](docs/implementation-plan.md)和[验证手册](docs/verification.md)。
 
 本机只推送 GitHub；Actions 自动将 main 及新发布的发行版同步到 Gitee。配置及验收步骤见 [发布流程](docs/publishing.md)。
+
+每日北京时间 08:17 有应用或构建代码更新时自动原签名发布；阶段性发布可在 GitHub Actions 的 `Publish Android release` 手动触发。纯文档更新不产生新版本。

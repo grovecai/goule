@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-14 正在将 GitHub 发布改为 Actions：每日北京时间 08:17 仅应用/构建代码有变化才发版，另有手动阶段入口，支持版本、说明、预发布、强制及只查看计划。已实现自动版本递增、原证书校验、GitHub 草稿附件验收后公开、直接等待 Gitee 同步、失败续发与下载记录更新；41 项 Python 回归及既有 v0.3.13 APK 的新验证器检查通过。原发布密钥已在本机定位，证书与 v0.3.13 一致，临时副本签名及两项密码输入验证通过；签名 Secrets 配置及真实云端发布验收待完成，详见 [本轮验证](docs/verification.md#github-定时与手动发布2026-11-14)。
+
 2026-11-14 14:05（北京时间）[Gitee v0.3.13 预发布版](https://gitee.com/grovecai/goule/releases/tag/v0.3.13) 已完成发布和匿名回下载验收，复用 GitHub 原签名 APK 与 SHA-256 文件，两项附件字节、大小、摘要完全一致，APK 摘要为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`。用户完成账号安全设置后，Gitee 仓库已按授权公开；main、注解标签、发布说明和预发布状态核对通过。13:56 真实 main push 已自动同步成功，GitHub 接受共享队列配置；后续本机只推 GitHub，Actions 自动同步代码和新发行版至 Gitee。README 已补国内下载并保留 GitHub 备用入口，`./scripts/check` 含 21 项 Python 回归通过，详见 [本轮验收](docs/verification.md#v0313-gitee-补发2026-11-14)。
 
 2026-11-14 用户明确改为本机只推 GitHub，平台间自动同步 Gitee 代码及发行版。已新增 main push 的仅代码同步触发，代码同步支持私有仓库、不要求 Release、不修改发行版，与发行版同步共用队列；AGENTS、README 和发布文档已取消本机双推要求。13:52 Gitee 已接收首次完整历史及 v0.3.13 标签，并核对 main=`d5a77e8`、发布标签一致。公开操作被 Gitee 账号安全评级拦截，页面要求用户完成 2FA 或绑定可靠第三方账号；已交由用户处理。尚未创建 Gitee 发行版或上传 APK，实际结果续记于 [本轮验证](docs/verification.md#v0313-gitee-补发2026-11-14)。
