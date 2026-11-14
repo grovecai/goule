@@ -10,6 +10,8 @@
 
 13:33 的 [第二次同步](https://github.com/grovecai/goule/actions/runs/43562056701) 通过令牌认证，因仓库不是公开状态而按预检停止。用户确认该仓库私有，并明确授权改为公开后继续。新增默认关闭的手动 `make_public` 输入及本机 `--make-public` 参数，只有显式启用才修改可见性，修改后回读确认公开；自动 Release 事件不改变可见性。相关回归覆盖未授权不修改、授权后修改并回读、仍未公开时停止和已公开时不修改。
 
+13:36 的 [公开设置尝试](https://github.com/grovecai/goule/actions/runs/43562314632) 返回 HTTP 422。登录仓库管理页选择开源时，页面明确提示「空仓库不支持设置为公开仓库」，尚未修改可见性。调整授权模式为先推送现有 GitHub 代码及标签，再公开并创建发行版，增加空仓库处理顺序回归；后续结果待记录。
+
 ## Gitee 同步配置（2026-11-14）
 
 已新增本地 `gitee` 远端 `https://gitee.com/grovecai/goule.git`，GitHub origin 保持原值。发布工作流监听 GitHub Release published/edited，并支持指定标签手动补发；复制已发布的原签名 APK/SHA-256，不重新构建。推送 main/本次标签后核对远端对象，上传后通过公开下载链接逐字节核对附件，更新正文中的附件链接并回读核对元数据。

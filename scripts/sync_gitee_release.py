@@ -59,10 +59,17 @@ class Gitee:
             return response.read()
 
 
-def verify_repository(client, make_public=False):
+def repository_access(client):
     repository = client.request("GET", "")
     if repository is None:
         raise RuntimeError("Gitee repository is missing or inaccessible to GITEE_TOKEN")
+    if (repository.get("permissions") or {}).get("push") is False:
+        raise RuntimeError("GITEE_TOKEN does not have repository write permission")
+    return repository
+
+
+def verify_repository(client, make_public=False):
+    repository = repository_access(client)
     if not repository.get("public") and make_public:
         print("Making Gitee repository public as explicitly requested", flush=True)
         client.request("PATCH", "", {"name": repository["name"], "private": False})
@@ -70,8 +77,6 @@ def verify_repository(client, make_public=False):
     if not repository.get("public"):
         visibility = ", ".join(f"{key}={repository.get(key)}" for key in ("public", "private", "internal", "empty_repo"))
         raise RuntimeError(f"Gitee repository must be public before publishing domestic downloads ({visibility})")
-    if (repository.get("permissions") or {}).get("push") is False:
-        raise RuntimeError("GITEE_TOKEN does not have repository write permission")
 
 
 def validate_artifacts(directory, tag):
@@ -141,7 +146,7 @@ def push_refs(tag, token, directory):
     remote = f"https://gitee.com/{REPOSITORY}.git"
     refs = ["refs/remotes/origin/main:refs/heads/main", f"refs/tags/{tag}:refs/tags/{tag}"]
     # Disable unrelated credential helpers for this command only.
-    run("git", "-c", "credential.helper=", "push", remote, *refs, env=env)
+    run("git", "-c", "credential.helper=", "push", "--progress", remote, *refs, env=env)
     actual = dict(
         line.split()[::-1]
         for line in run("git", "-c", "credential.helper=", "ls-remote", remote,
@@ -163,9 +168,14 @@ def main():
     token = os.environ.get("GITEE_TOKEN")
     if not token:
         raise RuntimeError("Configure the GITEE_TOKEN Actions secret or environment variable first")
-    print("Checking Gitee repository access and public visibility", flush=True)
+    print("Checking Gitee repository access", flush=True)
     client = Gitee(token)
-    verify_repository(client, make_public=args.make_public)
+    if args.make_public:
+        # Gitee cannot make an empty repository public; seed it with the approved
+        # GitHub source first, then change visibility and verify before release.
+        repository_access(client)
+    else:
+        verify_repository(client)
     print("Reading published GitHub release and fetching its tag", flush=True)
     source = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/tags/{args.tag}"))
     if source["draft"] or source["tag_name"] != args.tag:
@@ -186,6 +196,8 @@ def main():
         files = validate_artifacts(directory, args.tag)
         print("Pushing main and release tag to Gitee", flush=True)
         push_refs(args.tag, token, directory)
+        if args.make_public:
+            verify_repository(client, make_public=True)
         print("Synchronizing Gitee release metadata and attachments", flush=True)
         sync_release(client, source, files, commit)
 

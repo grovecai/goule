@@ -180,6 +180,27 @@ class ReleaseSyncTest(unittest.TestCase):
             sync.verify_repository(self.client, make_public=True)
             request.assert_called_once_with("GET", "")
 
+    def test_empty_repository_is_seeded_before_public_conversion(self):
+        import json
+        source = {**self.source, "draft": False}
+        phases = []
+
+        def run(*args, **kwargs):
+            if args[:2] == ("gh", "api"):
+                return json.dumps(source)
+            return "a" * 40
+
+        with patch.dict(os.environ, {"GITEE_TOKEN": "test-token"}), \
+                patch("sys.argv", ["sync", self.tag, "--make-public"]), \
+                patch("builtins.print"), patch.object(sync, "run", side_effect=run), \
+                patch.object(sync, "repository_access", side_effect=lambda client: phases.append("access")), \
+                patch.object(sync, "validate_artifacts", return_value=self.files), \
+                patch.object(sync, "push_refs", side_effect=lambda *args: phases.append("push")), \
+                patch.object(sync, "verify_repository", side_effect=lambda *args, **kwargs: phases.append("public")), \
+                patch.object(sync, "sync_release", side_effect=lambda *args: phases.append("release")):
+            sync.main()
+        self.assertEqual(phases, ["access", "push", "public", "release"])
+
     def test_read_only_repository_access_is_rejected(self):
         repository = {"public": True, "permissions": {"push": False}}
         with patch.object(self.client, "request", return_value=repository):
