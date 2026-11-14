@@ -22,6 +22,18 @@ Android 11 及以上 · [预发布说明与校验文件](https://github.com/grov
 
 更彻底的技术方案是**定制 ROM，也就是修改手机操作系统，让系统直接执行限制**。这样更稳定、更难绕过，但开发、适配和安装成本也更高，并非普通 App 的实现方式。
 
+## 手机实拍
+
+| 欢迎页 | 设置时长 |
+| --- | --- |
+| <img src="docs/screenshots/welcome-phone.jpg" width="260" alt="欢迎页显示救援插画、守住道心标语和立下第一条戒律按钮"> | <img src="docs/screenshots/duration-phone.jpg" width="260" alt="抖音戒律设置为可刷 5 分钟、休息 115 分钟，每 120 分钟重置一次额度"> |
+
+| 戒律列表 | 禁用页 |
+| --- | --- |
+| <img src="docs/screenshots/rules-phone.jpg" width="260" alt="戒律保存后，抖音显示可刷 5 分钟、休息 115 分钟及剩余额度"> | <img src="docs/screenshots/blocked-phone.jpg" width="260" alt="抖音禁用页显示解禁时刻 13:59，以及斩退心魔和回洞府按钮"> |
+
+欢迎页截图展示的是旧版 20/30 分钟示例；v0.3.13 的新建默认值为可刷 5 分钟、休息 115 分钟。
+
 ## 一条戒律怎么生效
 
 | ① 在戒律页设好时长 | ② 额度用满，禁用页挡住目标 App |
