@@ -20,8 +20,8 @@ REPOSITORY = "grovecai/goule"
 API = f"https://gitee.com/api/v5/repos/{REPOSITORY}"
 
 
-def run(*args, **kwargs):
-    return subprocess.check_output(args, text=True, timeout=180, **kwargs).strip()
+def run(*args, timeout=180, **kwargs):
+    return subprocess.check_output(args, text=True, timeout=timeout, **kwargs).strip()
 
 
 class Gitee:
@@ -43,7 +43,7 @@ class Gitee:
             ).encode() + file.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
         request = urllib.request.Request(API + path, data, headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=120) as response:
+            with urllib.request.urlopen(request, timeout=600 if file is not None else 120) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
             if method == "GET" and error.code == 404:
@@ -146,7 +146,11 @@ def push_refs(tag, token, directory):
     remote = f"https://gitee.com/{REPOSITORY}.git"
     refs = ["refs/remotes/origin/main:refs/heads/main", f"refs/tags/{tag}:refs/tags/{tag}"]
     # Disable unrelated credential helpers for this command only.
-    run("git", "-c", "credential.helper=", "push", "--progress", remote, *refs, env=env)
+    # The first mirror push carries the full history across regions. Buffer this
+    # repository's pack to avoid chunked uploads and allow slow but live progress.
+    run("git", "-c", "credential.helper=", "-c", "http.version=HTTP/1.1",
+        "-c", "http.postBuffer=33554432", "push", "--progress", remote, *refs,
+        env=env, timeout=1200)
     actual = dict(
         line.split()[::-1]
         for line in run("git", "-c", "credential.helper=", "ls-remote", remote,

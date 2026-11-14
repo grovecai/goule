@@ -15,7 +15,7 @@ GitHub 为主仓库，Gitee 提供国内代码和 APK 下载。两端使用同�
 1. 按实施计划完成版本递增、发布说明、`./scripts/check`、Release 构建、版本元数据、原签名及 ZIP 对齐检查，提交并合入 main；推送 GitHub 与 Gitee，禁止强制覆盖远端历史。
 2. 从干净发布提交构建一次签名 APK，命名为 `goule-vX.Y.Z.apk`，生成 `goule-vX.Y.Z.apk.sha256`（内容为 `64 位摘要  goule-vX.Y.Z.apk`）。创建并推送对应注解标签。
 3. 在 GitHub 发布包含这两项附件的 Release，保持发布说明和预发布标记正确；草稿不对外同步。GitHub 发布完成或编辑后触发 [Gitee 同步工作流](../.github/workflows/sync-gitee-release.yml)。必须等两项附件上传完毕后再验收；若先发布再传附件导致流程失败，附件齐全后手动重跑。
-4. 工作流先检查令牌能访问 Gitee 仓库且仓库公开，再从 GitHub 下载既有附件，校验 APK 摘要，将 main 和本次标签以普通推送同步至 Gitee，创建/更新发行版及附件。上传后通过不带令牌的公开链接回下载，逐字节核对 APK 和校验文件，将正文内的附件链接替换为 Gitee 实际下载地址。日志按阶段输出，外部命令单次最多等待 180 秒，API/附件请求超时为 120 秒。
+4. 工作流先检查令牌能访问 Gitee 仓库且仓库公开，再从 GitHub 下载既有附件，校验 APK 摘要，将 main 和本次标签以普通推送同步至 Gitee，创建/更新发行版及附件。上传后通过不带令牌的公开链接回下载，逐字节核对 APK 和校验文件，将正文内的附件链接替换为 Gitee 实际下载地址。日志按阶段输出，普通外部命令超时为 180 秒，Gitee 全历史推送为 1,200 秒，附件上传为 600 秒，其余 API/下载请求为 120 秒。工作流总上限 40 分钟；跨区域首次推送可能较慢，查看对象写入进度判断实际情况。
 5. 查看 [Actions 结果](https://github.com/grovecai/goule/actions/workflows/sync-gitee-release.yml)，核对两端 main/标签、发布说明及预发布状态。仅在成功后将实际 Gitee APK/校验下载地址加入 README，保留 GitHub 入口，并在 PROGRESS 和验证手册记录结果。失败时不可标为双平台发布完成。
 
 ## 补发和故障恢复
