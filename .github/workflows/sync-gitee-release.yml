@@ -1,0 +1,35 @@
+name: Sync release to Gitee
+
+on:
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published GitHub tag to sync (for example v0.3.13)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gitee-release
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'grovecai/goule' && (github.event_name == 'workflow_dispatch' || !github.event.release.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Copy source, tag and verified release attachments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: python3 scripts/sync_gitee_release.py "$RELEASE_TAG"

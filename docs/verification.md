@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## Gitee 同步配置（2026-11-14）
+
+已新增本地 `gitee` 远端 `https://gitee.com/grovecai/goule.git`，GitHub origin 保持原值。发布工作流监听 GitHub Release published/edited，并支持指定标签手动补发；复制已发布的原签名 APK/SHA-256，不重新构建。推送 main/本次标签后核对远端对象，上传后通过公开下载链接逐字节核对附件，更新正文中的附件链接并回读核对元数据。
+
+自动检查：`./scripts/check` 完整通过。新增 11 项 Python 离线回归覆盖原附件校验、APK 被改动、校验文件名称错误、首次同步、重复同步与说明更新、中断续传、同名异内容、上传损坏、重复附件名、缺少令牌和拒绝草稿；已接入统一检查。Android 单元测试、Lint、Debug/测试 APK 构建任务复用缓存，未修改应用代码。工作流通过 actionlint v1.7.7。首次检查因 shell 未配置 Java 停止，指定本机缓存 Zulu JDK 17.0.14 和 Android SDK 后完整通过。
+
+外部验证尚未通过：公开 `GET /api/v5/repos/grovecai/goule` 返回 HTTP 404 / `Not Found Project`，可能为仓库未创建或当前不可见，不能确认具体原因。HTTPS `ls-remote` 和 `git push gitee main` 缺少可用凭据而失败；SSH 返回 `Permission denied (publickey)`。GitHub Actions Secrets 未配置 `GITEE_TOKEN`，本轮没有实际创建 Gitee 发行版、上传 APK 或完成附件回下载；离线模拟通过不等于真实 API 验收通过。README 不提供尚未验证的国内 APK 链接。
+
+后续确认 Gitee 仓库已创建且可公开访问，配置本机 Git 权限和 GitHub `GITEE_TOKEN` Secret 后，手动运行 v0.3.13 同步。核对两端 main/注解标签、预发布状态及正文，APK 和 SHA-256 回下载与 GitHub 完全一致后，记录实际结果并更新 README 下载地址。本轮未安装手机或发布新版本。
+
 ## v0.3.13 发布包保留数据覆盖安装（2026-11-14）
 
 12:34（北京时间）按用户要求，将 GitHub v0.3.13/code 16 发布附件保留数据覆盖安装至 OPPO PLJ110（Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`）。安装前为 0.3.12/code 15 音量修复构建；重新下载 APK/SHA-256，摘要与发布记录一致，apksigner、与手机原包证书一致性、ZIP 对齐及包名/版本核对通过。`adb install --no-incremental -r` 返回 Success，未卸载、清数据或修改戒律。

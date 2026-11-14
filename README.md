@@ -16,6 +16,8 @@
 
 Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.13)
 
+[Gitee 国内镜像](https://gitee.com/grovecai/goule)正在配置；后续版本将同步发布到 Gitee，国内 APK 下载入口将在发行版附件上传并回下载校验通过后补充。目前请使用上方已验证的 GitHub 下载。
+
 ## 它如何工作，有什么限制？
 
 斩心魔通过必要的系统授权和后台运行，检测应用使用时长，并在超时后显示遮挡。**权限被撤销、程序停止运行或被卸载后，限制就可能失效。**作为普通第三方 App，最终控制权仍在你手里。
@@ -82,3 +84,5 @@ v0.3.13 是预发布版，修复按音量键后禁用页消失的问题。已识
 ## 开发与验证
 
 在仓库根目录运行 `./scripts/check`，需要 Bash、Git、Python 3、JDK 17 和 Android SDK 35。查看 [Android 设计](docs/android-design.md)、[交互设计](docs/interaction-design.md)、[实施计划](docs/implementation-plan.md)和[验证手册](docs/verification.md)。
+
+后续代码与发行版须同步至 GitHub 和 Gitee，配置及验收步骤见 [发布流程](docs/publishing.md)。

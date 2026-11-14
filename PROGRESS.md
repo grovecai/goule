@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-14 已新增 Gitee 远端 `https://gitee.com/grovecai/goule.git`，保留 GitHub origin；后续 main 与发行版双平台同步写入 AGENTS 和 [发布流程](docs/publishing.md)。新增 GitHub Release 发布/编辑自动同步及手动补发工作流，复制原 APK/SHA-256 并回下载核对，支持重跑补齐且拒绝同名不同内容附件。`./scripts/check` 通过（新增 11 项离线回归，Android 任务复用缓存），actionlint v1.7.7 通过。Gitee 实际同步尚未完成：仓库公开 API 返回 404，HTTPS 推送缺少凭据，SSH 公钥未获授权，GitHub 尚未配置 `GITEE_TOKEN` Secret；不能据此确认仓库是否存在。本轮未发布新版本或变更应用行为，README 保留已验证的 GitHub APK 下载。下一步确认 Gitee 仓库可访问并配置权限，手动同步 v0.3.13，核对附件后补充国内下载入口，见 [本轮验证](docs/verification.md#gitee-同步配置2026-11-14)。
+
 2026-11-14 12:34（北京时间）按用户要求，将 GitHub v0.3.13/code 16 发布包原签名覆盖安装到 OPPO PLJ110（Android 16、ColorOS V16.1.0），保留现有数据。下载/回拉 APK 摘要、原签名、ZIP 对齐、版本及安装身份核对通过；三条戒律的用量、剩余额度、周期与截止逐项完全一致，抖音仍禁用至 13:59，另两条仍各有 5 分钟。启动及服务实际绑定正常，手机停留戒律页，未修改戒律或权限，详见 [安装记录](docs/verification.md#v0313-发布包保留数据覆盖安装2026-11-14)。
 
 2026-11-14 12:31（北京时间）[v0.3.13 预发布版](https://github.com/grovecai/goule/releases/tag/v0.3.13) 已发布，code 16，注解标签指向 `9549f70`，包含音量面板使禁用页消失的修复，以及新建戒律默认「刷 5/歇 115 分钟」；欢迎页同步，已有戒律与原型迁移保留原配置。README 下载入口及版本说明已更新。`./scripts/check`、Release 构建、元数据、原签名及 ZIP 对齐通过，Debug/Release 各 45 项测试零失败，证书与回下载 v0.3.12 一致。两项附件回下载字节/大小/摘要、远程 README、标签版本说明和 Release 正文一致。本次版本包未另装手机，新默认页面未做真机复测，音量修复已记录的 OPPO 边界继续保留，见 [发布验证](docs/verification.md#v0313-发布包验证2026-11-14)。
