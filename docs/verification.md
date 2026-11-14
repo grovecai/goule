@@ -14,7 +14,17 @@
 
 云端只读预览 [43567451703](https://github.com/grovecai/goule/actions/runs/43567451703) 成功：固定提交的 checkout、JDK 17 设置、SDK/Build Tools 35 定位及真实 GitHub 发布查询全部通过。预览计划为 `mode=new`、`v0.3.14`、versionCode `17`、预发布，基线 v0.3.13；预览未修改版本、创建标签、构建或上传附件。最新自动代码同步 [43567626158](https://github.com/grovecai/goule/actions/runs/43567626158) 成功，证明队列与修正后的 Git 推送能在实际环境执行。
 
-44 项回归及完整 `./scripts/check` 通过；actionlint v1.7.12 对除官方 `queue: max` 新字段外的工作流配置检查通过，该字段由 GitHub 的实际运行验收。每日 cron 已部署，尚未等待次日的真实定时触发；同一代码变化判断已覆盖离线回归。三个 Android 签名 Secrets 尚未配置：已向用户请求保存原私钥及密码到 GitHub 的明确授权，未收到授权前不传输签名材料。真实原签名云端构建、v0.3.14 双平台发布及发布后无变化跳过仍待完成，当前没有新 GitHub/Gitee 发行版。
+44 项回归及完整 `./scripts/check` 通过；actionlint v1.7.12 对除官方 `queue: max` 新字段外的工作流配置检查通过，该字段由 GitHub 的实际运行验收。每日 cron 已部署，尚未等待次日的真实定时触发；同一代码变化判断已覆盖离线回归及下述实际运行。用户明确批准后才配置原私钥及密码的云端 Secrets。
+
+16:09（北京时间）按用户授权，将现有原发布 PKCS12 的 Base64、store password 和 key password 通过标准输入分别保存到 `ANDROID_RELEASE_KEYSTORE_BASE64`、`ANDROID_RELEASE_STORE_PASSWORD`、`ANDROID_RELEASE_KEY_PASSWORD`，GitHub 列举确认三个加密 Secret 存在。密钥和密码未写入工作区、提交或日志，原 `GITEE_TOKEN` 保留。
+
+[真实手动发布 43574433249](https://github.com/grovecai/goule/actions/runs/43574433249) 全部通过，耗时 7 分 49 秒：从干净发布提交 `75e039dbed4e72a6c630fa690385cf2357893513` 构建 v0.3.14/code 17，44 项 Python 回归、Android 单元测试/Lint/Debug/测试 APK 检查及 Release 构建通过。原签名证书、包名、版本、Android 11 最低版本、非调试标记、ZIP 对齐及包内源码提交核对通过；普通原子推送后，GitHub 两项草稿附件回下载一致才公开为预发布，发布时间 16:11:40。
+
+Gitee 发行版 ID `1308052` 同步成功，预发布状态、名称与正文一致（附件链接替换为 Gitee）。APK 3,950,703 字节，SHA-256 为 `131f04b74e8cd34b543d9ae396e072ee7fe2e34795abff5177e78b60a071b677`；校验文件 84 字节，自身 SHA-256 为 `c587d1032dcddd932276612c9e8d6f31970f07f3ece55d5d7d13e079530cd623`。工作流和本机 16:18 匿名回下载都确认两项附件与 GitHub 逐字节一致，本机再次验证原证书、版本、源码提交和对齐。完成状态 `.github/release-state.json` 为 `complete=true`，自动验收记录的 commit/摘要与实测一致。
+
+工作流随后自动提交 README 下载区、PROGRESS、完成状态和 `docs/latest-release-verification.json`，生成 main 提交 `33ece64620d83764facc492e8bb893286d75909e` 并同步 Gitee。再以默认参数真实触发 [43575136535](https://github.com/grovecai/goule/actions/runs/43575136535)，16:17:57 返回 `mode=skip previous_tag=v0.3.14`、原因无应用/构建代码变化，16:18:04 核对 main 镜像后成功；没有新构建、版本或 v0.3.15 标签，main 仍为上述提交，证明发布机器人记录不会导致循环发版。
+
+本机复核资料位于 `/Users/caiyuanrui/.cache/goule-releases/actions-v0.3.14-20261114/`，含两端回下载、`publication-verification.json`、`publish-success.log` 和 `no-change-success.log`。本轮仅修改发布流程及版本元数据，未安装手机；自动检查不替代新的真机功能回归，v0.3.13 已记录的设备边界继续保留。签名配置、真实发布和无变化跳过验收均已完成，定时规则等待下一次自然触发。
 
 ## v0.3.13 Gitee 补发（2026-11-14）
 

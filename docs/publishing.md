@@ -4,6 +4,8 @@ GitHub 是唯一日常推送和发布入口，本机只推 main。`Publish Andro
 
 Gitee 自带镜像按 [官方说明](https://help.gitee.com/repository/settings/sync-between-gitee-github) 同步分支、标签和提交；发行版正文及二进制附件由本项目 Actions 单独处理，无需另设 Gitee 镜像或本机双推。
 
+原签名 Secrets 已按用户授权配置；v0.3.14/code 17 已完成一次真实云端发布、双平台回下载验证和无更新再触发跳过，见 [验收记录](verification.md#github-定时与手动发布2026-11-14)。
+
 ## 一次性配置
 
 - GitHub：`origin` → `git@github.com:grovecai/goule.git`。
