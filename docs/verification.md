@@ -10,6 +10,8 @@
 
 真实环境首轮计划检查 [43567003679](https://github.com/grovecai/goule/actions/runs/43567003679) 在 SDK 设置步骤失败：runner 已预装 Android SDK，但 `sdkmanager` 不在 PATH。改为检查固定 SDK/Build Tools 35.0.0 路径，缺失时从 cmdline-tools 的明确路径安装；计划检查使用独立只读并发组，不等待真实发布队列。Gitee 代码同步 [43566543894](https://github.com/grovecai/goule/actions/runs/43566543894) 遇到 300 秒连接超时，增加退出码 128 的最多两次原参数重试；ref 冲突仍立即失败，不强制推送。后续预览/发布结果待续记。
 
+针对 runner 到 Gitee Git HTTPS 的反复连接超时，推送增加 Git 原生 `--ipv4`，保留正常 TLS 校验；这是兼容性重试措施，尚未据此确认网络故障根因。验证期间仅保留最新 main 的代码同步任务，避免旧的重复同步阻塞发布验收；不会取消 Release 同步或实际发布任务。
+
 ## v0.3.13 Gitee 补发（2026-11-14）
 
 用户明确要求配置令牌后补发 GitHub v0.3.13。已确认 `GITEE_TOKEN` Secret 存在（不读取/输出令牌），重新下载两项 GitHub 附件：APK 3,950,703 字节，SHA-256 为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`，校验文件 84 字节，内容对应同一 APK。

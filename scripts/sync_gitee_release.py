@@ -165,7 +165,7 @@ def push_refs(tag, token, directory):
     # The first mirror push carries the full history across regions. Buffer this
     # repository's pack to avoid chunked uploads and allow slow but live progress.
     gitee_git("git", "-c", "credential.helper=", "-c", "http.version=HTTP/1.1",
-        "-c", "http.postBuffer=33554432", "push", "--progress", remote, *refs,
+        "-c", "http.postBuffer=33554432", "push", "--ipv4", "--progress", remote, *refs,
         env=env, timeout=1200)
     actual = dict(
         line.split()[::-1]
