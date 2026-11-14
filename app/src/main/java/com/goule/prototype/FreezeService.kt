@@ -26,11 +26,27 @@ class FreezeService : AccessibilityService() {
     private val keyguard by lazy { getSystemService(KeyguardManager::class.java) }
     private val windows by lazy { getSystemService(WindowManager::class.java) }
     private val handler = Handler(Looper.getMainLooper())
-    private val tick = Runnable { reconcile(foreground) }
+    private var tickDueUptime: Long? = null
+    private val tick = Runnable {
+        val late = tickDueUptime?.let { SystemClock.uptimeMillis() - it } ?: 0
+        if (late > 1_000) observe("tick lateByMs=$late")
+        reconcile(foreground, "tick")
+    }
+    private val diagnostics by lazy { TimingDiagnostics.get(this) }
+    private var lastSnapshotElapsed = 0L
+    private var heartbeatDue = 0L
+    private val heartbeat = object : Runnable {
+        override fun run() {
+            val now = SystemClock.elapsedRealtime()
+            snapshot("heartbeat lateByMs=${(now - heartbeatDue).coerceAtLeast(0)}")
+            heartbeatDue = now + 30_000
+            handler.postDelayed(this, 30_000)
+        }
+    }
     private val recents = RecentsTransition()
     private val leaveAfterLauncherEvent = Runnable {
         recents.reset()
-        reconcile(null)
+        reconcile(null, "launcher settle")
     }
     private val launchers by lazy {
         val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
@@ -56,6 +72,7 @@ class FreezeService : AccessibilityService() {
     private fun observe(message: String) {
         if (observations.size == 32) observations.removeFirst()
         observations.addLast("${SystemClock.uptimeMillis()}: $message")
+        diagnostics.record(message)
     }
 
     override fun dump(fd: FileDescriptor, writer: PrintWriter, args: Array<out String>) {
@@ -66,15 +83,24 @@ class FreezeService : AccessibilityService() {
         for (rule in store.rules) writer.println("target=${rule.packageName} eligible=${rule.packageName in eligible} usedMs=${rule.usedMs} remainingMs=${rule.remainingUseMs(now)} cycleStart=${rule.cycleStart} blockedUntil=${rule.blockedUntil}")
         writer.println("Recent observations (uptime ms):")
         observations.forEach(writer::println)
+        if ("--history" in args) diagnostics.dump(writer)
+    }
+
+    private fun snapshot(reason: String) {
+        val now = store.now()
+        diagnostics.record("state reason=$reason connected=$connected consent=${store.consent} interactive=${power.isInteractive} locked=${keyguard.isKeyguardLocked} foreground=$foreground observing=$observedAtUptime tickDue=$tickDueUptime events=$eventCount lastEvent=$lastEventAt samples=$sampleCount rejected=$rejectedSamples lastAwake=$lastSampleAwake lastElapsed=$lastSampleElapsed")
+        for (rule in store.rules) diagnostics.record("rule target=${rule.packageName} eligible=${rule.packageName in eligible} usedMs=${rule.usedMs} remainingMs=${rule.remainingUseMs(now)} use=${rule.useMinutes} rest=${rule.blockMinutes} activeUse=${rule.activeUseMinutes} activeRest=${rule.activeBlockMinutes} cycleStart=${rule.cycleStart} cycleEnd=${rule.cycleEnd} accountedUntil=${rule.accountedUntil} blockedUntil=${rule.blockedUntil} ruleNow=$now")
+        lastSnapshotElapsed = SystemClock.elapsedRealtime()
     }
 
     private val screenReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = clearForeground()
+        override fun onReceive(context: Context, intent: Intent) = clearForeground("screen ${intent.action}")
     }
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            observe("package eligibility changed action=${intent.action}")
             reloadEligible()
-            if (foreground !in eligible) clearForeground()
+            if (foreground !in eligible) clearForeground("package eligibility")
         }
     }
 
@@ -99,9 +125,12 @@ class FreezeService : AccessibilityService() {
         reloadEligible()
         store.onConfigurationChanged = {
             reloadEligible()
-            clearForeground()
+            clearForeground("rule configuration")
         }
-        clearForeground()
+        clearForeground("service connected")
+        handler.removeCallbacks(heartbeat)
+        heartbeatDue = SystemClock.elapsedRealtime() + 30_000
+        handler.postDelayed(heartbeat, 30_000)
     }
 
     private fun listen(receiver: BroadcastReceiver, filter: IntentFilter) {
@@ -118,13 +147,14 @@ class FreezeService : AccessibilityService() {
         eventCount++
         lastEventAt = SystemClock.uptimeMillis()
         val category = when (val name = event.packageName?.toString()) {
-            in eligible -> "target=$name"
+            null -> "no-package"
+            in eligible -> "target=$name class=${event.className} fullScreen=${event.isFullScreen}"
             packageName -> "self"
             in launchers -> "launcher"
             "com.android.systemui" -> "system-ui class=${event.className} fullScreen=${event.isFullScreen}"
             else -> "other"
         }
-        observe("event $category type=${event.eventType} age=${lastEventAt - event.eventTime} changes=${event.contentChangeTypes}")
+        observe("event $category type=${event.eventType} windowId=${event.windowId} eventTime=${event.eventTime} age=${lastEventAt - event.eventTime} watermark=$ignoreEventsBefore changes=${event.contentChangeTypes}")
         if (!store.consent || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventTime < ignoreEventsBefore
         ) {
@@ -133,24 +163,29 @@ class FreezeService : AccessibilityService() {
         }
         val name = event.packageName?.toString()
         // The overlay reports its own window change without taking input focus.
-        if (name == packageName && event.className?.toString() == OVERLAY_EVENT_CLASS) return
+        if (name == packageName && event.className?.toString() == OVERLAY_EVENT_CLASS) {
+            observe("own overlay event ignored")
+            return
+        }
         ignoreEventsBefore = event.eventTime
         // A floating SystemUI dialog can open/close without a new underlying-app event.
         // Keep its target and deadline, but still reconcile lock/screen state and expiry.
         if (isTransientSystemDialog(name, event.className?.toString(), event.isFullScreen)) {
             observe("floating system dialog; retain target")
-            reconcile(foreground)
+            reconcile(foreground, "floating system dialog")
             return
         }
         handler.removeCallbacks(leaveAfterLauncherEvent)
         if (name != null && name in launchers) {
             val changes = event.contentChangeTypes
-            when (recents.launcherEvent(
+            val decision = recents.launcherEvent(
                 name, event.eventTime,
                 changes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED != 0,
                 changes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED != 0,
-            )) {
-                RecentsTransition.Decision.PASS -> reconcile(null)
+            )
+            observe("launcher decision=$decision")
+            when (decision) {
+                RecentsTransition.Decision.PASS -> reconcile(null, "launcher pass")
                 RecentsTransition.Decision.DEFER ->
                     handler.postDelayed(leaveAfterLauncherEvent, RecentsTransition.SETTLE_MS)
                 RecentsTransition.Decision.IGNORE -> Unit
@@ -158,7 +193,7 @@ class FreezeService : AccessibilityService() {
             return
         }
         val target = name?.takeIf { it in eligible }
-        reconcile(target)
+        reconcile(target, "window $category")
         // Recents' trailing launcher events also arrive while an app is still usable.
         if (target != null) recents.targetResumed(event.eventTime) else recents.reset()
     }
@@ -166,34 +201,35 @@ class FreezeService : AccessibilityService() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.i(TAG, "UI task removed; saving usage while keeping the bound service")
         // Removing the UI task must preserve the system-bound accessibility session.
-        reconcile(foreground)
+        reconcile(foreground, "task removed")
         store.flush()
         super.onTaskRemoved(rootIntent)
     }
 
-    override fun onInterrupt() = clearForeground()
+    override fun onInterrupt() = clearForeground("service interrupted")
     override fun onUnbind(intent: Intent): Boolean {
         Log.i(TAG, "Accessibility service unbound")
-        disconnect()
+        disconnect("service unbound")
         return super.onUnbind(intent)
     }
     override fun onDestroy() {
         Log.i(TAG, "Accessibility service destroyed")
-        disconnect()
+        disconnect("service destroyed")
         super.onDestroy()
     }
 
-    private fun clearForeground() {
-        observe("clear foreground interactive=${power.isInteractive} locked=${keyguard.isKeyguardLocked}")
+    private fun clearForeground(reason: String) {
+        observe("clear foreground reason=$reason interactive=${power.isInteractive} locked=${keyguard.isKeyguardLocked}")
         handler.removeCallbacks(leaveAfterLauncherEvent)
         recents.reset()
         ignoreEventsBefore = SystemClock.uptimeMillis()
         observedAtUptime = null
-        reconcile(null)
+        reconcile(null, reason)
     }
 
-    private fun reconcile(next: String?) {
+    private fun reconcile(next: String?, reason: String) {
         handler.removeCallbacks(tick)
+        tickDueUptime = null
         val previous = foreground
         val now = store.now()
         val uptime = SystemClock.uptimeMillis()
@@ -218,7 +254,7 @@ class FreezeService : AccessibilityService() {
         }
         val target = if (interactive) next else null
         val saved = store.change(updated, force = transitioned || (previous != null && previous != target))
-        if (previous != target || !saved) observe("reconcile $previous -> $target saved=$saved interactive=$interactive")
+        if (previous != target || !saved) observe("reconcile $previous -> $target reason=$reason delta=$delta saved=$saved interactive=$interactive")
         val rule = store.rules.find { it.packageName == target }
         foreground = rule?.packageName
         observedAtUptime = uptime.takeIf { rule != null && !rule.isBlocked(now) && saved }
@@ -228,7 +264,11 @@ class FreezeService : AccessibilityService() {
 
         if (rule != null) {
             val delay = if (deadline != null && overlay == null) 1_000L else rule.nextCheckDelayMs(now)
+            tickDueUptime = uptime + delay
             handler.postDelayed(tick, delay)
+        }
+        if (previous != foreground || transitioned || !saved || elapsed - lastSnapshotElapsed >= 30_000) {
+            snapshot("reconcile $reason saved=$saved")
         }
     }
 
@@ -239,12 +279,12 @@ class FreezeService : AccessibilityService() {
         val view = FreezeOverlayView(this, rule.label, deadlineLabel(deadline, now),
             onCloseTarget = {
                 if (performGlobalAction(GLOBAL_ACTION_RECENTS)) {
-                    clearForeground()
+                    clearForeground("overlay open recents")
                     Toast.makeText(this, R.string.close_target_hint, Toast.LENGTH_SHORT).show()
                 } else Toast.makeText(this, R.string.recents_failed, Toast.LENGTH_SHORT).show()
             },
             onGoHome = {
-                if (performGlobalAction(GLOBAL_ACTION_HOME)) clearForeground()
+                if (performGlobalAction(GLOBAL_ACTION_HOME)) clearForeground("overlay home")
                 else Toast.makeText(this, R.string.home_failed, Toast.LENGTH_SHORT).show()
             },
         )
@@ -263,21 +303,26 @@ class FreezeService : AccessibilityService() {
             windows.addView(view, params)
             overlay = view
             overlayRule = key
+            observe("overlay attached target=${rule.packageName} deadline=$deadline")
         } catch (error: WindowManager.BadTokenException) {
+            observe("overlay attach failed kind=${error.javaClass.simpleName}")
             Log.w(TAG, "Could not attach freeze overlay", error)
         }
     }
 
     private fun hideOverlay() {
         val view = overlay ?: return
+        observe("overlay removed target=$overlayRule")
         overlay = null
         overlayRule = null
         windows.removeViewImmediate(view)
     }
 
-    private fun disconnect() {
+    private fun disconnect(reason: String) {
+        observe(reason)
         connected = false
-        clearForeground()
+        handler.removeCallbacks(heartbeat)
+        clearForeground(reason)
         store.flush()
         store.onConfigurationChanged = null
         if (listening) {

@@ -35,6 +35,12 @@
 3. 遮罩可见时安排到期移除；进程休眠、重启或从桌面重新打开目标 App 时，先推进到当前固定周期，再按累计量和升级保留的截止判断是否恢复。只恢复已提交的会话增量，不补算未观察到的活跃时间。同次开机的系统时间调整只影响展示时间。重连和重启后读取已保存的规则时钟。服务未连接或前台归属不明确时，清除不可靠的遮罩并展示可确认的服务状态。
 4. 若真机发现前台事件漏报或重连后难以确认活动 App，再验证 `UsageStatsManager.queryEvents` 作为补偿。该方案需要额外的「使用情况访问权限」，要说明用途并防止和实时会话重复计时。首轮原型只请求无障碍服务。 [UsageStatsManager](https://developer.android.com/reference/android/app/usage/UsageStatsManager)
 
+### 本机计时诊断
+
+服务保留最近 32 条内存观察，并异步写入本机私有、不备份的容量轮转日志（最多 4 × 256 KiB）。记录前台开始/停止原因、目标与系统窗口元数据、服务生命周期、两种单调时钟、采样拒绝、存储失败、周期和额度快照；前台为空时仍按普通 Handler 每 30 秒记心跳，不主动唤醒设备。不读取事件文字、节点或窗口内容，不保存未配置 App 的身份，不增加权限或联网。诊断写入失败/队列满不影响规则计时，末尾排队记录可能随突然退出丢失。
+
+通过 ADB 的 Service `dump --history` 导出；服务断开时，用户打开主界面后可从 Activity `dump --history` 读取此前日志。具体证据、候选机制与采集流程见 [红果漏计排查](timing-diagnosis-2026-11-15.md)。该诊断不改变前台判定或计时策略，不能将可模拟的停止路径当作已确认的真机根因。
+
 ### 发布边界
 
 Google Play 版本应准确披露无障碍用途，提供单独的应用内显著披露、明确同意、Play Console 声明与演示。「斩心魔」的主要用途是个人自律，服务不声明 `isAccessibilityTool=true`。覆盖范围限于用户设置规则的前台 App；设备设置和卸载流程保持可用。声明能否获批由渠道审核决定。 [Google Play AccessibilityService 政策](https://support.google.com/googleplay/android-developer/answer/10964491)

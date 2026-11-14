@@ -82,6 +82,7 @@ class PageRefreshInstrumentation : Instrumentation() {
                 "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
                 "PASS: usable target keeps counting after recents closes and stops on exit\n" +
                 "PASS: floating system dialogs retain target timing/deadline and respect shade/settings/screen exits\n" +
+                "PASS: timing stop paths and persistent diagnostics explain rotation/window/screen/stale/stall scenarios\n" +
                 "PASS: onboarding visits three steps in order and resumes before completion\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {

@@ -74,6 +74,9 @@ internal object ForegroundTimingChecks {
                 check(store.rules.single().usedMs == afterShade) { "Shade exit kept counting" }
                 checkForeground(service, null)
 
+            }
+            investigateStopPaths(context, service, store, target, onMain)
+            onMain {
                 val now = store.now()
                 check(store.configure(listOf(Rule(target, "禁用回归", 10, 120, now,
                     cycleStart = now, usedMs = 10 * MINUTE, blockedFrom = now))))
@@ -107,6 +110,68 @@ internal object ForegroundTimingChecks {
         }
     }
 
+    /** These are candidate mechanisms, not a claim that ColorOS emitted them in the lost trace. */
+    private fun investigateStopPaths(context: Context, service: FreezeService, store: RuleStore,
+        target: String, onMain: (() -> Unit) -> Unit,
+    ) {
+        onMain { event(service, target, className = "fixture.PortraitActivity") }
+        val beforeRotation = store.rules.single().usedMs
+        SystemClock.sleep(600)
+        onMain { event(service, target, className = "fixture.ShortSeriesLandActivity", fullScreen = true) }
+        SystemClock.sleep(600)
+        onMain {
+            // Same-package rotation and stale non-target events must not stop an active target.
+            event(service, "fixture.other", time = SystemClock.uptimeMillis() - 10_000)
+            event(service, target, className = "fixture.ShortSeriesLandActivity", fullScreen = true)
+            checkForeground(service, target)
+            check(store.rules.single().usedMs >= beforeRotation + 1_000) { "Rotation lost usage" }
+            // A non-fullscreen unknown SystemUI window currently clears foreground too.
+            event(service, "com.android.systemui", className = "android.widget.FrameLayout")
+            checkForeground(service, null)
+        }
+        val afterUnknownWindow = store.rules.single().usedMs
+        SystemClock.sleep(1_200)
+        onMain {
+            check(store.rules.single().usedMs == afterUnknownWindow) {
+                "Candidate stop path did not stay stopped without another target event"
+            }
+            event(service, target)
+        }
+        SystemClock.sleep(600)
+        onMain {
+            event(service, target)
+            check(store.rules.single().usedMs >= afterUnknownWindow + 500) { "Target event did not resume timing" }
+            event(service, null)
+            checkForeground(service, null)
+            event(service, target)
+            service.onInterrupt()
+            checkForeground(service, null)
+            event(service, target)
+            val receiver = FreezeService::class.java.getDeclaredField("screenReceiver").apply {
+                isAccessible = true
+            }.get(service) as android.content.BroadcastReceiver
+            receiver.onReceive(context, Intent(Intent.ACTION_SCREEN_ON))
+            event(service, target, time = SystemClock.uptimeMillis() - 10_000)
+            checkForeground(service, null)
+            event(service, target)
+            checkForeground(service, target)
+        }
+        onMain {
+            val beforeStall = store.rules.single().usedMs
+            // Simulate a delayed main-thread callback: it must reject this unconfirmed interval.
+            SystemClock.sleep(2_200)
+            event(service, target)
+            check(store.rules.single().usedMs == beforeStall) { "Long callback stall was backfilled" }
+            repeat(40) { event(service, target, className = "fixture.LandscapeActivity") }
+            val history = dump(service, history = true)
+            check("sample rejected" in history && "reason=service interrupted" in history &&
+                "class=fixture.PortraitActivity" in history && "class=fixture.ShortSeriesLandActivity" in history &&
+                "Persistent timing diagnostics" in history && "process start version=" in history) {
+                "Persistent trace could not explain transitions beyond the 32-event memory buffer: $history"
+            }
+        }
+    }
+
     private fun dialog(service: FreezeService) {
         event(service, "com.android.systemui", className = "android.app.Dialog")
         // Exact class/fullScreen pair captured on OPPO PLJ110 / ColorOS V16.1.0.
@@ -115,21 +180,26 @@ internal object ForegroundTimingChecks {
     }
 
     private fun checkForeground(service: FreezeService, expected: String?) {
-        val output = StringWriter()
-        FreezeService::class.java.getDeclaredMethod("dump", FileDescriptor::class.java,
-            PrintWriter::class.java, Array<String>::class.java).apply { isAccessible = true }
-            .invoke(service, FileDescriptor.out, PrintWriter(output), emptyArray<String>())
-        check("foreground=$expected observingSince=" in output.toString()) {
-            "Unexpected foreground after window transition: $output"
+        val text = dump(service)
+        check("foreground=$expected observingSince=" in text) {
+            "Unexpected foreground after window transition: $text"
         }
     }
 
-    private fun event(service: FreezeService, name: String, changes: Int = 0,
-        className: String? = null, fullScreen: Boolean = false,
+    private fun dump(service: FreezeService, history: Boolean = false): String {
+        val output = StringWriter()
+        FreezeService::class.java.getDeclaredMethod("dump", FileDescriptor::class.java,
+            PrintWriter::class.java, Array<String>::class.java).apply { isAccessible = true }
+            .invoke(service, FileDescriptor.out, PrintWriter(output), if (history) arrayOf("--history") else emptyArray<String>())
+        return output.toString()
+    }
+
+    private fun event(service: FreezeService, name: String?, changes: Int = 0,
+        className: String? = null, fullScreen: Boolean = false, time: Long = SystemClock.uptimeMillis(),
     ) {
         val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED).apply {
             packageName = name
-            eventTime = SystemClock.uptimeMillis()
+            eventTime = time
             contentChangeTypes = changes
             this.className = className
             isFullScreen = fullScreen

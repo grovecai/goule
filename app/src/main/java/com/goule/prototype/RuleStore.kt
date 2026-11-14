@@ -6,6 +6,7 @@ import android.provider.Settings
 
 /** Activity and service share this store on the process main thread. */
 internal class RuleStore private constructor(context: Context) {
+    private val diagnostics by lazy { TimingDiagnostics.get(context) }
     private val prefs = context.getSharedPreferences("rules", Context.MODE_PRIVATE)
     private val legacy = context.prototypeSettings()
     private val boot = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
@@ -60,7 +61,10 @@ internal class RuleStore private constructor(context: Context) {
         }
         if (!prefs.edit().putString("items", encodeRules(items)).putLong("clock", now())
                 .putInt("boot", boot).putLong("elapsed", SystemClock.elapsedRealtime()).commit()
-        ) return false
+        ) {
+            diagnostics.record("store commit failed force=$force dirty=$dirty rules=${items.size}")
+            return false
+        }
         rules = items
         dirty = false
         lastWrite = SystemClock.elapsedRealtime()

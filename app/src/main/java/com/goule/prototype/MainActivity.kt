@@ -35,6 +35,8 @@ import android.widget.ScrollView
 import android.widget.Space
 import android.widget.TextView
 import android.widget.Toast
+import java.io.FileDescriptor
+import java.io.PrintWriter
 
 class MainActivity : Activity() {
     private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION }
@@ -73,6 +75,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TimingDiagnostics.get(this).record("activity created serviceConnected=${FreezeService.connected}")
         val pendingStep = Page.entries.firstOrNull { it.name == store.onboardingStep }
         onboarding = pendingStep != null
         page = when (val savedPage = savedInstanceState?.getString("page")) {
@@ -102,6 +105,11 @@ class MainActivity : Activity() {
         targets = eligibleTargets()
         appState = serviceState()
         render()
+    }
+
+    override fun dump(prefix: String, fd: FileDescriptor?, writer: PrintWriter, args: Array<out String>?) {
+        if (args?.contains("--history") == true) TimingDiagnostics.get(this).dump(writer)
+        else super.dump(prefix, fd, writer, args)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
