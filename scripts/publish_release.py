@@ -319,7 +319,9 @@ def finalize_release(plan, commit, apk):
     entry = (f'{now} Actions 已完成 {tag}/code {plan["version_code"]} 原签名自动发布及 Gitee 同步，'
              f'两端附件回下载一致，README 下载已更新。自动验收见 [发布记录]({result.as_posix()})；'
              '本次 CI 不代表新的真机行为回归。\n\n')
-    progress.write_text(progress.read_text().replace("## 当前状态\n\n", "## 当前状态\n\n" + entry, 1))
+    progress_text = progress.read_text().replace("## 当前状态\n\n", "## 当前状态\n\n" + entry, 1)
+    progress_text = re.sub(r"(?m)^更新于 \d{4}-\d{2}-\d{2}。$", f"更新于 {now[:10]}。", progress_text, count=1)
+    progress.write_text(progress_text)
     run("./scripts/check", timeout=1200)
     git("add", STATE.as_posix(), "README.md", "PROGRESS.md", result.as_posix())
     git("diff", "--cached", "--check")
