@@ -81,6 +81,7 @@ class PageRefreshInstrumentation : Instrumentation() {
                 "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
                 "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
                 "PASS: usable target keeps counting after recents closes and stops on exit\n" +
+                "PASS: floating system dialogs retain target timing/deadline and respect shade/settings/screen exits\n" +
                 "PASS: onboarding visits three steps in order and resumes before completion\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {

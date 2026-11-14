@@ -52,7 +52,7 @@ class FreezeService : AccessibilityService() {
     private var lastSampleAwake = 0L
     private var lastSampleElapsed = 0L
 
-    /** Only configured target identities are retained; never event text or window content. */
+    /** Retains target identities and system window metadata; never text or window content. */
     private fun observe(message: String) {
         if (observations.size == 32) observations.removeFirst()
         observations.addLast("${SystemClock.uptimeMillis()}: $message")
@@ -121,6 +121,7 @@ class FreezeService : AccessibilityService() {
             in eligible -> "target=$name"
             packageName -> "self"
             in launchers -> "launcher"
+            "com.android.systemui" -> "system-ui class=${event.className} fullScreen=${event.isFullScreen}"
             else -> "other"
         }
         observe("event $category type=${event.eventType} age=${lastEventAt - event.eventTime} changes=${event.contentChangeTypes}")
@@ -134,6 +135,13 @@ class FreezeService : AccessibilityService() {
         // The overlay reports its own window change without taking input focus.
         if (name == packageName && event.className?.toString() == OVERLAY_EVENT_CLASS) return
         ignoreEventsBefore = event.eventTime
+        // A floating SystemUI dialog can open/close without a new underlying-app event.
+        // Keep its target and deadline, but still reconcile lock/screen state and expiry.
+        if (isTransientSystemDialog(name, event.className?.toString(), event.isFullScreen)) {
+            observe("floating system dialog; retain target")
+            reconcile(foreground)
+            return
+        }
         handler.removeCallbacks(leaveAfterLauncherEvent)
         if (name != null && name in launchers) {
             val changes = event.contentChangeTypes

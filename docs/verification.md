@@ -1,5 +1,19 @@
 # Goule 验证手册
 
+## 2026-11-14 音量面板导致禁用页消失修复
+
+设备为 OPPO PLJ110，Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。用户反馈抖音禁用页出现后，按音量键会消失。初始生产服务记录 `connected=true consent=true`，抖音已用 `60000 ms`、剩余 `0`，周期起点 `1794629032023`、禁用截止 `1794635992023`（13:59）均有效，但 `foreground=null overlay=null`，排除额度到期及服务失联。
+
+生产服务补充仅含 SystemUI 类名/全屏标记的本机诊断后复现：音量键产生 `TYPE_WINDOW_STATE_CHANGED`，包为 `com.android.systemui`，类为 `com.oplus.systemui.volume.view.OplusVolumeDialogView$CustomDialog`，`fullScreen=true`；旧处理将其归为非目标并撤下遮罩，面板收起后没有目标恢复事件。该面板使用透明全屏窗口，不能仅用非全屏标记识别。现按已确认的厂商类名及普通非全屏 SystemUI Dialog 保留底层目标，仍核对锁屏、权限和到期；不读取事件文字/窗口内容，不新增权限或拦截音量键，未知窗口仍按原逻辑处理。
+
+`GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过，Debug/Release 各 45 项单元测试零失败/错误/跳过，Lint、Debug/测试 APK 及另行 Release 构建通过。Android 15/API 35 模拟器独立包六组 PASS，新增生产服务事件重放覆盖 OPPO 精确类名/全屏组合、普通系统弹窗、可刷期间持续计时、禁用目标/截止保留、通知栏/设置退出及屏幕广播后迟到弹窗不能恢复旧目标。纯 Kotlin 检查覆盖未知类、其他包、全屏普通 Dialog 不误保留。首轮模拟器在冷启动解锁前发起 instrumentation，因应用非 Direct Boot 应用未启动；待 `RUNNING_UNLOCKED` 后重跑通过，未为此改变应用启动能力。设备回归由 `scripts/check-ui` 接入 `scripts/check`。
+
+12:22 原发布签名覆盖安装最终修复构建，仍为 0.3.12/code 15，未发布 GitHub Release。apksigner、原包证书一致性、ZIP 对齐、版本及安装后回拉摘要通过，最终 APK SHA-256 为 `46925193d446c7287c7f7c0771e9a7ef145e3c991bb071bb15eaf24e398927c0`。appId `10445` 与首次安装时间 `2026-11-14 12:00:57` 保留，本轮未卸载或清除正式数据，未修改戒律/白名单或系统授权。
+
+真机通过 ADB 注入音量增减键：禁用页、音量面板出现期间及面板收起后均显示同一抖音遮罩；连续减/减/增/增仍保留。桌面退出、进入系统设置时 `foreground=null overlay=null`，重进抖音恢复遮罩。用量 `60000 ms`、剩余 `0`、周期起点和原禁用截止逐项一致，Enabled/Bound 正常、Binding/Crashed 为空。截图核对禁用页显示 13:59，手机最终停留该页。
+
+本轮没有人为改短正式戒律或等待完整周期；真实物理锁屏往返、来电、通知栏实际展开/收起、完整自然到期及其他品牌仍待复测，其中屏幕广播、通知栏分类和期限保留由隔离包事件重放覆盖。临时诊断测试包已卸载，模拟器测试包由脚本清理；材料位于本机 `/Users/caiyuanrui/.cache/goule-android/volume-overlay-20261114/`，含修复前后服务/窗口记录、签名/安装包、截图、检查日志及 `final-verification.json`。
+
 ## v0.3.12 发布包手机安装（2026-11-14）
 
 本轮 `./scripts/check` 通过，仓库检查、单元测试、Lint、Debug 和测试 APK 构建均成功（既有 Gradle 任务复用缓存）；未执行设备自动回归。
