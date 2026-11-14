@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## v0.3.13 发布包保留数据覆盖安装（2026-11-14）
+
+12:34（北京时间）按用户要求，将 GitHub v0.3.13/code 16 发布附件保留数据覆盖安装至 OPPO PLJ110（Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`）。安装前为 0.3.12/code 15 音量修复构建；重新下载 APK/SHA-256，摘要与发布记录一致，apksigner、与手机原包证书一致性、ZIP 对齐及包名/版本核对通过。`adb install --no-incremental -r` 返回 Success，未卸载、清数据或修改戒律。
+
+安装后回拉 APK SHA-256 与发布附件一致：`9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`。appId `10445`、首次安装时间 `2026-11-14 12:00:57` 保持；前后服务 dump 中三条记录逐项完全一致：抖音已用 `60000 ms`、剩余 `0`、周期起点 `1794629032023`、禁用截止 `1794635992023`（13:59）；红果与小红书已用 `0`、剩余 `300000 ms`，周期起点与禁用截止仍为空。
+
+`am start -W` 返回 Status: ok、LaunchState: WARM，戒律页截图确认现有条目与时长显示，抖音仍禁用至 13:59、小红书仍可刷 5 分钟。服务 `connected=true consent=true`，Enabled/Bound 正常、Binding/Crashed 为空。未改变系统授权/白名单，手机停留戒律页。本轮只验收发布包安装、运行数据/安装身份保留及启动，不代表新建表单、音量键、锁屏或完整周期已在该发布包重新验收。
+
+材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.13-phone-install-20261114/`，含下载/原包/回拉 APK、签名、前后包与服务/授权记录、戒律页截图及 `installation-verification.json`。
+
 ## v0.3.13 发布包验证（2026-11-14）
 
 版本 0.3.13/versionCode 16，包含音量面板导致禁用页消失的修复及新建戒律默认 5/115 分钟。欢迎页与新建表单复用新默认；已有戒律编辑/替换仍带入原配置，最早单目标原型迁移保留历史 20/30 分钟。`./scripts/check` 通过，Debug/Release 各 45 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过；Release 从干净提交 `9549f7066eb7faa8c948e8ccf5e50cfc46316f07` 重新构建通过，包内 `version-control-info` 与提交/标签一致。包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本及非调试标记通过；apksigner、原发布证书一致性和 ZIP 对齐通过，证书与本轮回下载 v0.3.12 一致。
