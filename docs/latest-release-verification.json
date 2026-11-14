@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-11-14T16:16:38+08:00",
+  "tag": "v0.3.14",
+  "commit": "75e039dbed4e72a6c630fa690385cf2357893513",
+  "version_code": 17,
+  "certificate_sha256": "a99c6b2900299c459fe1121dc7868762d8afb66ec9f5b4819a471a5b62103559",
+  "apk_sha256": "131f04b74e8cd34b543d9ae396e072ee7fe2e34795abff5177e78b60a071b677",
+  "apk_size": 3950703,
+  "github_and_gitee_downloads_match": true,
+  "workflow_url": "https://github.com/grovecai/goule/actions/runs/43574433249",
+  "device_testing": "Not performed by CI; see existing verification records"
+}

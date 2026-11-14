@@ -6,7 +6,7 @@
   "previous_tag": "v0.3.13",
   "source_commit": "1ef6de7c8a3e2ebfda252d40c853b4fa41e78478",
   "prerelease": true,
-  "complete": false,
+  "complete": true,
   "changed_files": [
     ".github/workflows/publish-release.yml",
     ".github/workflows/sync-gitee-release.yml",
