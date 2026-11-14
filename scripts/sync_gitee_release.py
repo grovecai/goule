@@ -64,7 +64,8 @@ def verify_repository(client):
     if repository is None:
         raise RuntimeError("Gitee repository is missing or inaccessible to GITEE_TOKEN")
     if not repository.get("public"):
-        raise RuntimeError("Gitee repository must be public before publishing domestic downloads")
+        visibility = ", ".join(f"{key}={repository.get(key)}" for key in ("public", "private", "internal", "empty_repo"))
+        raise RuntimeError(f"Gitee repository must be public before publishing domestic downloads ({visibility})")
     if (repository.get("permissions") or {}).get("push") is False:
         raise RuntimeError("GITEE_TOKEN does not have repository write permission")
 
