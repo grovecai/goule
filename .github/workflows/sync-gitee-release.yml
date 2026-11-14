@@ -9,6 +9,11 @@ on:
         description: Published GitHub tag to sync (for example v0.3.13)
         required: true
         type: string
+      make_public:
+        description: Make the Gitee repository public (only with explicit owner approval)
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -32,4 +37,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
-        run: python3 scripts/sync_gitee_release.py "$RELEASE_TAG"
+          MAKE_PUBLIC: ${{ inputs.make_public }}
+        run: |
+          sync_args=("$RELEASE_TAG")
+          if [[ "$MAKE_PUBLIC" == "true" ]]; then
+            sync_args+=(--make-public)
+          fi
+          python3 scripts/sync_gitee_release.py "${sync_args[@]}"

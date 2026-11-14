@@ -155,9 +155,30 @@ class ReleaseSyncTest(unittest.TestCase):
                 sync.verify_repository(self.client)
 
     def test_private_repository_is_rejected_before_publishing(self):
-        with patch.object(self.client, "request", return_value={"public": False}):
+        with patch.object(self.client, "request", return_value={"public": False}) as request:
             with self.assertRaisesRegex(RuntimeError, "must be public"):
                 sync.verify_repository(self.client)
+            request.assert_called_once_with("GET", "")
+
+    def test_public_conversion_requires_explicit_option_and_is_verified(self):
+        private = {"name": "斩心魔", "public": False, "private": True}
+        public = {**private, "public": True, "private": False}
+        with patch.object(self.client, "request", side_effect=[private, public, public]) as request, \
+                patch("builtins.print"):
+            sync.verify_repository(self.client, make_public=True)
+            self.assertEqual(request.call_args_list[1].args, ("PATCH", "", {"name": "斩心魔", "private": False}))
+            self.assertEqual(request.call_args_list[-1].args, ("GET", ""))
+
+    def test_public_conversion_still_rejects_pending_or_nonpublic_state(self):
+        private = {"name": "斩心魔", "public": False, "private": True}
+        with patch.object(self.client, "request", return_value=private), patch("builtins.print"):
+            with self.assertRaisesRegex(RuntimeError, "must be public"):
+                sync.verify_repository(self.client, make_public=True)
+
+    def test_already_public_repository_is_not_modified(self):
+        with patch.object(self.client, "request", return_value={"public": True}) as request:
+            sync.verify_repository(self.client, make_public=True)
+            request.assert_called_once_with("GET", "")
 
     def test_read_only_repository_access_is_rejected(self):
         repository = {"public": True, "permissions": {"push": False}}

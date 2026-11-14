@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-2026-11-14 用户已添加 GitHub Actions `GITEE_TOKEN`，开始补发 v0.3.13。原 GitHub APK/SHA-256 重新下载核对通过；首次工作流长时间未返回，已请求取消并补充仓库访问/公开状态预检、阶段日志和命令超时，新增四项预检回归后 `./scripts/check` 通过（15 项 Python 回归，Android 任务复用缓存）。真实发布仍在验证中，尚未提供国内 APK 入口，结果续记于 [本轮验证](docs/verification.md#v0313-gitee-补发2026-11-14)。
+2026-11-14 用户已添加 GitHub Actions `GITEE_TOKEN`，开始补发 v0.3.13。原 GitHub APK/SHA-256 重新下载核对通过；首次工作流长时间未返回，已请求取消并补充仓库访问/公开状态预检、阶段日志和命令超时。真实预检已通过令牌认证，但 Gitee 仓库未公开；用户确认私有并明确批准改为公开后继续。已加入默认关闭的手动 `make_public` 选项及回读验证，正在重试，尚未提供国内 APK 入口，结果续记于 [本轮验证](docs/verification.md#v0313-gitee-补发2026-11-14)。
 
 2026-11-14 已新增 Gitee 远端 `https://gitee.com/grovecai/goule.git`，保留 GitHub origin；后续 main 与发行版双平台同步写入 AGENTS 和 [发布流程](docs/publishing.md)。新增 GitHub Release 发布/编辑自动同步及手动补发工作流，复制原 APK/SHA-256 并回下载核对，支持重跑补齐且拒绝同名不同内容附件。`./scripts/check` 通过（新增 11 项离线回归，Android 任务复用缓存），actionlint v1.7.7 通过。Gitee 实际同步尚未完成：仓库公开 API 返回 404，HTTPS 推送缺少凭据，SSH 公钥未获授权，GitHub 尚未配置 `GITEE_TOKEN` Secret；不能据此确认仓库是否存在。本轮未发布新版本或变更应用行为，README 保留已验证的 GitHub APK 下载。下一步确认 Gitee 仓库可访问并配置权限，手动同步 v0.3.13，核对附件后补充国内下载入口，见 [本轮验证](docs/verification.md#gitee-同步配置2026-11-14)。
 

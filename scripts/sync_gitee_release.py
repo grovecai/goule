@@ -59,10 +59,14 @@ class Gitee:
             return response.read()
 
 
-def verify_repository(client):
+def verify_repository(client, make_public=False):
     repository = client.request("GET", "")
     if repository is None:
         raise RuntimeError("Gitee repository is missing or inaccessible to GITEE_TOKEN")
+    if not repository.get("public") and make_public:
+        print("Making Gitee repository public as explicitly requested", flush=True)
+        client.request("PATCH", "", {"name": repository["name"], "private": False})
+        repository = client.request("GET", "")
     if not repository.get("public"):
         visibility = ", ".join(f"{key}={repository.get(key)}" for key in ("public", "private", "internal", "empty_repo"))
         raise RuntimeError(f"Gitee repository must be public before publishing domestic downloads ({visibility})")
@@ -151,6 +155,8 @@ def push_refs(tag, token, directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tag", help="Published GitHub tag, for example v0.3.13")
+    parser.add_argument("--make-public", action="store_true",
+                        help="Make the Gitee repository public; requires explicit owner approval")
     args = parser.parse_args()
     if not re.fullmatch(r"v\d+\.\d+\.\d+", args.tag):
         parser.error("tag must have the form v0.3.13")
@@ -159,7 +165,7 @@ def main():
         raise RuntimeError("Configure the GITEE_TOKEN Actions secret or environment variable first")
     print("Checking Gitee repository access and public visibility", flush=True)
     client = Gitee(token)
-    verify_repository(client)
+    verify_repository(client, make_public=args.make_public)
     print("Reading published GitHub release and fetching its tag", flush=True)
     source = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/tags/{args.tag}"))
     if source["draft"] or source["tag_name"] != args.tag:
