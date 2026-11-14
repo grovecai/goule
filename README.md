@@ -85,4 +85,4 @@ v0.3.13 是预发布版，修复按音量键后禁用页消失的问题。已识
 
 在仓库根目录运行 `./scripts/check`，需要 Bash、Git、Python 3、JDK 17 和 Android SDK 35。查看 [Android 设计](docs/android-design.md)、[交互设计](docs/interaction-design.md)、[实施计划](docs/implementation-plan.md)和[验证手册](docs/verification.md)。
 
-后续代码与发行版须同步至 GitHub 和 Gitee，配置及验收步骤见 [发布流程](docs/publishing.md)。
+本机只推送 GitHub；Actions 自动将 main 及新发布的发行版同步到 Gitee。配置及验收步骤见 [发布流程](docs/publishing.md)。

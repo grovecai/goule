@@ -201,6 +201,37 @@ class ReleaseSyncTest(unittest.TestCase):
             sync.main()
         self.assertEqual(phases, ["access", "push", "public", "release"])
 
+    def test_code_push_syncs_main_without_release_or_github_asset_calls(self):
+        with patch.dict(os.environ, {"GITEE_TOKEN": "test-token"}), \
+                patch("sys.argv", ["sync", "--code-only"]), patch("builtins.print"), \
+                patch.object(sync, "repository_access", return_value={"public": False}), \
+                patch.object(sync, "verify_repository") as visibility, patch.object(sync, "run") as run, \
+                patch.object(sync, "push_refs") as push, patch.object(sync, "sync_release") as release:
+            sync.main()
+        run.assert_called_once_with("git", "fetch", "origin", "refs/heads/main:refs/remotes/origin/main")
+        self.assertIsNone(push.call_args.args[0])
+        visibility.assert_not_called()
+        release.assert_not_called()
+
+    def test_code_only_push_never_sends_a_tag_or_force_option(self):
+        calls = []
+
+        def run(*args, **kwargs):
+            calls.append(args)
+            if "ls-remote" in args:
+                return "a" * 40 + "\trefs/heads/main"
+            if "rev-parse" in args:
+                return "a" * 40
+            return ""
+
+        with patch.object(sync, "run", side_effect=run):
+            sync.push_refs(None, "test-token", self.directory)
+        command = next(args for args in calls if "push" in args)
+        self.assertIn("refs/remotes/origin/main:refs/heads/main", command)
+        self.assertFalse(any("refs/tags/" in arg for arg in command))
+        self.assertNotIn("--force", command)
+        self.assertNotIn("test-token", " ".join(command))
+
     def test_read_only_repository_access_is_rejected(self):
         repository = {"public": True, "permissions": {"push": False}}
         with patch.object(self.client, "request", return_value=repository):

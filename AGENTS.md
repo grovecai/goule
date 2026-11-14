@@ -12,4 +12,4 @@
 - 跨组件的工作先在实施计划写明范围和验收条件。阶段状态变化时更新 [PROGRESS.md](PROGRESS.md)，并在实施计划或验证手册记录实际检查和结果。真机结果应包含设备与系统版本。
 - 新增可自动复现的回归检查时，将它接入 `./scripts/check`。
 - 每轮代码修改完成并通过检查后，提交改动、合并到 `main` 分支并推送到远程。真机待验证项如实记录在进度和验证手册中。
-- 代码远端为 GitHub `origin` 与 Gitee `gitee`（`https://gitee.com/grovecai/goule.git`），提交后的 main 同步推送两端，不强制覆盖远端历史。后续发布必须同时提供 GitHub 和 Gitee 发行版：同一标签、发布说明、预发布状态、原签名 APK 与 SHA-256 文件，Gitee 附件回下载核对通过后再更新 README 国内下载入口。按 [发布流程](docs/publishing.md) 执行，缺少权限或同步失败时明确记录，不将标签推送视为发行版完成。
+- GitHub `origin` 为唯一日常推送入口，本机只向 GitHub 推送 main 和发布标签；GitHub Actions 在 main 更新时自动同步代码到 Gitee，在 GitHub Release 发布/编辑时同步对应标签、发布说明、预发布状态、原签名 APK 与 SHA-256 文件。`gitee`（`https://gitee.com/grovecai/goule.git`）保留用于查看与验收，无需本机双推，不强制覆盖远端历史。Gitee 附件回下载核对通过后再更新 README 国内下载入口；按 [发布流程](docs/publishing.md) 执行，缺少权限或同步失败时明确记录，不将标签推送视为发行版完成。

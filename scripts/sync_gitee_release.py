@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy a published GitHub release to Gitee without rebuilding its APK."""
+"""Sync GitHub main or a published release to Gitee without rebuilding its APK."""
 
 import argparse
 import hashlib
@@ -144,7 +144,9 @@ def push_refs(tag, token, directory):
     askpass.chmod(0o700)
     env = {**os.environ, "GITEE_TOKEN": token, "GIT_ASKPASS": str(askpass), "GIT_TERMINAL_PROMPT": "0"}
     remote = f"https://gitee.com/{REPOSITORY}.git"
-    refs = ["refs/remotes/origin/main:refs/heads/main", f"refs/tags/{tag}:refs/tags/{tag}"]
+    refs = ["refs/remotes/origin/main:refs/heads/main"]
+    if tag is not None:
+        refs.append(f"refs/tags/{tag}:refs/tags/{tag}")
     # Disable unrelated credential helpers for this command only.
     # The first mirror push carries the full history across regions. Buffer this
     # repository's pack to avoid chunked uploads and allow slow but live progress.
@@ -154,7 +156,7 @@ def push_refs(tag, token, directory):
     actual = dict(
         line.split()[::-1]
         for line in run("git", "-c", "credential.helper=", "ls-remote", remote,
-                        "refs/heads/main", f"refs/tags/{tag}", env=env).splitlines()
+                        *(ref.split(":")[1] for ref in refs), env=env).splitlines()
     )
     for local, target in (ref.split(":") for ref in refs):
         if actual.get(target) != run("git", "rev-parse", local):
@@ -163,23 +165,36 @@ def push_refs(tag, token, directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("tag", help="Published GitHub tag, for example v0.3.13")
+    parser.add_argument("tag", nargs="?", help="Published GitHub tag, for example v0.3.13")
+    parser.add_argument("--code-only", action="store_true", help="Sync GitHub main without publishing a release")
     parser.add_argument("--make-public", action="store_true",
                         help="Make the Gitee repository public; requires explicit owner approval")
     args = parser.parse_args()
-    if not re.fullmatch(r"v\d+\.\d+\.\d+", args.tag):
+    if args.code_only and args.tag:
+        parser.error("--code-only does not take a release tag")
+    if not args.code_only and not re.fullmatch(r"v\d+\.\d+\.\d+", args.tag or ""):
         parser.error("tag must have the form v0.3.13")
     token = os.environ.get("GITEE_TOKEN")
     if not token:
         raise RuntimeError("Configure the GITEE_TOKEN Actions secret or environment variable first")
     print("Checking Gitee repository access", flush=True)
     client = Gitee(token)
-    if args.make_public:
+    if args.make_public or args.code_only:
         # Gitee cannot make an empty repository public; seed it with the approved
-        # GitHub source first, then change visibility and verify before release.
+        # GitHub source first. Code-only mirroring also works for private repos;
+        # published domestic downloads still require verified public visibility.
         repository_access(client)
     else:
         verify_repository(client)
+    if args.code_only:
+        print("Fetching GitHub main for automatic code synchronization", flush=True)
+        run("git", "fetch", "origin", "refs/heads/main:refs/remotes/origin/main")
+        with tempfile.TemporaryDirectory(prefix="goule-gitee-") as temporary:
+            push_refs(None, token, Path(temporary))
+        if args.make_public:
+            verify_repository(client, make_public=True)
+        print("Verified GitHub main synchronization to Gitee", flush=True)
+        return
     print("Reading published GitHub release and fetching its tag", flush=True)
     source = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/tags/{args.tag}"))
     if source["draft"] or source["tag_name"] != args.tag:

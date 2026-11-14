@@ -1,6 +1,8 @@
-name: Sync release to Gitee
+name: Sync GitHub to Gitee
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published, edited]
   workflow_dispatch:
@@ -21,10 +23,11 @@ permissions:
 concurrency:
   group: sync-gitee-release
   cancel-in-progress: false
+  queue: max
 
 jobs:
   sync:
-    if: github.repository == 'grovecai/goule' && (github.event_name == 'workflow_dispatch' || !github.event.release.draft)
+    if: github.repository == 'grovecai/goule' && (github.event_name != 'release' || !github.event.release.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -32,14 +35,19 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Copy source, tag and verified release attachments
+      - name: Sync main or copy verified release attachments
         env:
           GH_TOKEN: ${{ github.token }}
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
           MAKE_PUBLIC: ${{ inputs.make_public }}
+          CODE_ONLY: ${{ github.event_name == 'push' }}
         run: |
-          sync_args=("$RELEASE_TAG")
+          if [[ "$CODE_ONLY" == "true" ]]; then
+            sync_args=(--code-only)
+          else
+            sync_args=("$RELEASE_TAG")
+          fi
           if [[ "$MAKE_PUBLIC" == "true" ]]; then
             sync_args+=(--make-public)
           fi
