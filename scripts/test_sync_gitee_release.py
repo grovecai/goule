@@ -142,10 +142,33 @@ class ReleaseSyncTest(unittest.TestCase):
         source = {**self.source, "draft": True}
         with patch.dict(os.environ, {"GITEE_TOKEN": "test-token"}), \
                 patch("sys.argv", ["sync", self.tag]), \
+                patch("builtins.print"), \
+                patch.object(sync, "verify_repository"), \
                 patch.object(sync, "run", return_value=json.dumps(source)) as run:
             with self.assertRaisesRegex(RuntimeError, "Only published"):
                 sync.main()
             self.assertEqual(run.call_count, 1)
+
+    def test_repository_missing_or_inaccessible_is_rejected(self):
+        with patch.object(self.client, "request", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "missing or inaccessible"):
+                sync.verify_repository(self.client)
+
+    def test_private_repository_is_rejected_before_publishing(self):
+        with patch.object(self.client, "request", return_value={"public": False}):
+            with self.assertRaisesRegex(RuntimeError, "must be public"):
+                sync.verify_repository(self.client)
+
+    def test_read_only_repository_access_is_rejected(self):
+        repository = {"public": True, "permissions": {"push": False}}
+        with patch.object(self.client, "request", return_value=repository):
+            with self.assertRaisesRegex(RuntimeError, "write permission"):
+                sync.verify_repository(self.client)
+
+    def test_public_repository_with_write_access_is_accepted(self):
+        repository = {"public": True, "permissions": {"push": True}}
+        with patch.object(self.client, "request", return_value=repository):
+            sync.verify_repository(self.client)
 
 
 if __name__ == "__main__":

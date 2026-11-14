@@ -1,5 +1,13 @@
 # Goule 验证手册
 
+## v0.3.13 Gitee 补发（2026-11-14）
+
+用户明确要求配置令牌后补发 GitHub v0.3.13。已确认 `GITEE_TOKEN` Secret 存在（不读取/输出令牌），重新下载两项 GitHub 附件：APK 3,950,703 字节，SHA-256 为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`，校验文件 84 字节，内容对应同一 APK。
+
+13:27（北京时间）触发首次 [手动同步](https://github.com/grovecai/goule/actions/runs/43561652497)，同步步骤长时间未返回，已请求取消。增加推送前的仓库可访问/公开状态预检、阶段日志和外部命令 180 秒超时；API/下载维持 120 秒超时。新增四项回归覆盖仓库不可见、私有、只读及公开可写，`./scripts/check` 完整通过，15 项 Python 回归零失败，Android 检查任务复用缓存。真实发布和回下载结果仍待重试验证，尚未更新 README 为国内 APK 下载。
+
+原附件和摘要材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/gitee-v0.3.13-20261114-g0dulvrg/`。本轮不重新构建/签名 APK，不另装手机。
+
 ## Gitee 同步配置（2026-11-14）
 
 已新增本地 `gitee` 远端 `https://gitee.com/grovecai/goule.git`，GitHub origin 保持原值。发布工作流监听 GitHub Release published/edited，并支持指定标签手动补发；复制已发布的原签名 APK/SHA-256，不重新构建。推送 main/本次标签后核对远端对象，上传后通过公开下载链接逐字节核对附件，更新正文中的附件链接并回读核对元数据。

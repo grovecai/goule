@@ -21,7 +21,7 @@ API = f"https://gitee.com/api/v5/repos/{REPOSITORY}"
 
 
 def run(*args, **kwargs):
-    return subprocess.check_output(args, text=True, **kwargs).strip()
+    return subprocess.check_output(args, text=True, timeout=180, **kwargs).strip()
 
 
 class Gitee:
@@ -59,6 +59,16 @@ class Gitee:
             return response.read()
 
 
+def verify_repository(client):
+    repository = client.request("GET", "")
+    if repository is None:
+        raise RuntimeError("Gitee repository is missing or inaccessible to GITEE_TOKEN")
+    if not repository.get("public"):
+        raise RuntimeError("Gitee repository must be public before publishing domestic downloads")
+    if (repository.get("permissions") or {}).get("push") is False:
+        raise RuntimeError("GITEE_TOKEN does not have repository write permission")
+
+
 def validate_artifacts(directory, tag):
     apk = directory / f"goule-{tag}.apk"
     checksum = directory / f"{apk.name}.sha256"
@@ -88,6 +98,7 @@ def sync_release(client, source, files, commit):
         page += 1
     downloads = {}
     for file in files:
+        print(f"Copying and verifying Gitee attachment: {file.name}", flush=True)
         matches = [asset for asset in attachments if asset["name"] == file.name]
         if len(matches) > 1:
             raise RuntimeError(f"Duplicate Gitee attachments: {file.name}")
@@ -145,6 +156,10 @@ def main():
     token = os.environ.get("GITEE_TOKEN")
     if not token:
         raise RuntimeError("Configure the GITEE_TOKEN Actions secret or environment variable first")
+    print("Checking Gitee repository access and public visibility", flush=True)
+    client = Gitee(token)
+    verify_repository(client)
+    print("Reading published GitHub release and fetching its tag", flush=True)
     source = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/tags/{args.tag}"))
     if source["draft"] or source["tag_name"] != args.tag:
         raise RuntimeError("Only published GitHub releases with the requested tag can be synced")
@@ -157,17 +172,20 @@ def main():
     run("git", "merge-base", "--is-ancestor", commit, "refs/remotes/origin/main")
     with tempfile.TemporaryDirectory(prefix="goule-gitee-") as temporary:
         directory = Path(temporary)
+        print("Downloading and checking original GitHub APK and SHA-256", flush=True)
         run("gh", "release", "download", args.tag, "--repo", REPOSITORY,
             "--pattern", f"goule-{args.tag}.apk", "--pattern", f"goule-{args.tag}.apk.sha256",
             "--dir", str(directory))
         files = validate_artifacts(directory, args.tag)
+        print("Pushing main and release tag to Gitee", flush=True)
         push_refs(args.tag, token, directory)
-        sync_release(Gitee(token), source, files, commit)
+        print("Synchronizing Gitee release metadata and attachments", flush=True)
+        sync_release(client, source, files, commit)
 
 
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"Gitee sync failed: {error}", file=sys.stderr)
         sys.exit(1)
