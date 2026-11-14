@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -231,6 +232,27 @@ class ReleaseSyncTest(unittest.TestCase):
         self.assertFalse(any("refs/tags/" in arg for arg in command))
         self.assertNotIn("--force", command)
         self.assertNotIn("test-token", " ".join(command))
+
+    def test_connection_failure_retries_without_changing_git_arguments(self):
+        error = subprocess.CalledProcessError(128, ["git", "push"])
+        with patch.object(sync, "run", side_effect=[error, "success"]) as run, \
+                patch.object(sync.time, "sleep"), patch("builtins.print"):
+            self.assertEqual(sync.gitee_git("git", "push", "remote", "main"), "success")
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0], run.call_args_list[1])
+
+    def test_ref_conflict_is_not_retried(self):
+        with patch.object(sync, "run", side_effect=subprocess.CalledProcessError(1, ["git", "push"])) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                sync.gitee_git("git", "push", "remote", "main")
+        self.assertEqual(run.call_count, 1)
+
+    def test_connection_retries_are_bounded(self):
+        with patch.object(sync, "run", side_effect=subprocess.CalledProcessError(128, ["git", "push"])) as run, \
+                patch.object(sync.time, "sleep"), patch("builtins.print"):
+            with self.assertRaises(subprocess.CalledProcessError):
+                sync.gitee_git("git", "push", "remote", "main")
+        self.assertEqual(run.call_count, 3)
 
     def test_read_only_repository_access_is_rejected(self):
         repository = {"public": True, "permissions": {"push": False}}

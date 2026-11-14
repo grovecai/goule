@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +23,19 @@ API = f"https://gitee.com/api/v5/repos/{REPOSITORY}"
 
 def run(*args, timeout=180, **kwargs):
     return subprocess.check_output(args, text=True, timeout=timeout, **kwargs).strip()
+
+
+def gitee_git(*args, **kwargs):
+    # Git returns 128 for connection/authentication failures. Retry at most twice;
+    # ref conflicts normally return 1 and must never be hidden or force-pushed.
+    for attempt in range(3):
+        try:
+            return run(*args, **kwargs)
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 128 or attempt == 2:
+                raise
+            print(f"Gitee Git failed with exit 128; retry {attempt + 1}/2", flush=True)
+            time.sleep(2 * (attempt + 1))
 
 
 class Gitee:
@@ -150,12 +164,12 @@ def push_refs(tag, token, directory):
     # Disable unrelated credential helpers for this command only.
     # The first mirror push carries the full history across regions. Buffer this
     # repository's pack to avoid chunked uploads and allow slow but live progress.
-    run("git", "-c", "credential.helper=", "-c", "http.version=HTTP/1.1",
+    gitee_git("git", "-c", "credential.helper=", "-c", "http.version=HTTP/1.1",
         "-c", "http.postBuffer=33554432", "push", "--progress", remote, *refs,
         env=env, timeout=1200)
     actual = dict(
         line.split()[::-1]
-        for line in run("git", "-c", "credential.helper=", "ls-remote", remote,
+        for line in gitee_git("git", "-c", "credential.helper=", "ls-remote", remote,
                         *(ref.split(":")[1] for ref in refs), env=env).splitlines()
     )
     for local, target in (ref.split(":") for ref in refs):
