@@ -29,7 +29,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-gitee-release
+  # Read-only plans can run while a real sync/publication is still in progress.
+  group: ${{ inputs.dry_run && format('release-plan-{0}', github.run_id) || 'sync-gitee-release' }}
   cancel-in-progress: false
   queue: max
 
