@@ -10,13 +10,13 @@
 
 **清醒时，给自己戴上自愿的镣铐；上头时，让它拽住想继续的手。**
 
+**[下载斩心魔 v0.3.12 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.12/goule-v0.3.12.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.12)
+
 ## 它如何工作，有什么限制？
 
 斩心魔通过必要的系统授权和后台运行，检测应用使用时长，并在超时后显示遮挡。**权限被撤销、程序停止运行或被卸载后，限制就可能失效。**作为普通第三方 App，最终控制权仍在你手里。
 
 更彻底的技术方案是**定制 ROM，也就是修改手机操作系统，让系统直接执行限制**。这样更稳定、更难绕过，但开发、适配和安装成本也更高，并非普通 App 的实现方式。
-
-**[下载斩心魔 v0.3.12 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.12/goule-v0.3.12.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.12)
 
 ## 一条戒律怎么生效
 
