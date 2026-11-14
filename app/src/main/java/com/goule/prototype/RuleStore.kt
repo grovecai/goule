@@ -31,7 +31,8 @@ internal class RuleStore private constructor(context: Context) {
             val target = legacy.getString(TARGET_KEY, null)
             if (target != null) {
                 val label = context.eligibleTargets().find { it.packageName == target }?.label ?: target
-                change(listOf(Rule(target, label, DEFAULT_USE, DEFAULT_BLOCK, now())), force = true)
+                // Preserve the original prototype's configuration when migrating its saved target.
+                change(listOf(Rule(target, label, 20, 30, now())), force = true)
             }
         }
     }

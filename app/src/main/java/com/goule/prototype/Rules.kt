@@ -4,8 +4,8 @@ internal const val MINUTE = 60_000L
 internal const val HOUR = 60 * MINUTE
 internal const val DAY = 24 * HOUR
 internal const val EDIT_INTERVAL = 5 * MINUTE
-internal const val DEFAULT_USE = 20
-internal const val DEFAULT_BLOCK = 30
+internal const val DEFAULT_USE = 5
+internal const val DEFAULT_BLOCK = 115
 
 internal data class Rule(
     val packageName: String,
