@@ -2,7 +2,9 @@
 
 ## v0.3.13 发布包验证（2026-11-14）
 
-版本 0.3.13/versionCode 16，包含音量面板导致禁用页消失的修复及新建戒律默认 5/115 分钟。欢迎页与新建表单复用新默认；已有戒律编辑/替换仍带入原配置，最早单目标原型迁移保留历史 20/30 分钟。`./scripts/check` 通过，Debug/Release 各 45 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过，准备 Release 构建通过；最终从干净发布提交构建、签名、元数据及附件回下载结果在发布后补记。
+版本 0.3.13/versionCode 16，包含音量面板导致禁用页消失的修复及新建戒律默认 5/115 分钟。欢迎页与新建表单复用新默认；已有戒律编辑/替换仍带入原配置，最早单目标原型迁移保留历史 20/30 分钟。`./scripts/check` 通过，Debug/Release 各 45 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过；Release 从干净提交 `9549f7066eb7faa8c948e8ccf5e50cfc46316f07` 重新构建通过，包内 `version-control-info` 与提交/标签一致。包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本及非调试标记通过；apksigner、原发布证书一致性和 ZIP 对齐通过，证书与本轮回下载 v0.3.12 一致。
+
+12:31:52（北京时间）GitHub [v0.3.13](https://github.com/grovecai/goule/releases/tag/v0.3.13) 发布完成，非草稿预发布，注解标签指向上述提交。APK 与 SHA-256 两项附件回下载字节、大小和摘要与本地完全一致，GitHub 附件摘要匹配；校验文件仅含正确摘要与 APK 名。最终 APK SHA-256 为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`。远程 README、标签版本说明及 Release 正文一致；材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.13/`，含检查/构建/签名记录、包内提交信息、前版及本版回下载文件、`build-summary.json` 和 `publication-verification.json`。
 
 本次版本包不另装手机，新默认值的真机页面未复测。音量修复同功能 0.3.12/code 15 构建已在 OPPO PLJ110（Android 16、ColorOS V16.1.0）通过音量增减/收起/连续按键、桌面/设置退出及重进拦截，原用量、周期和截止保留；Android 15 模拟器六组回归及真实物理锁屏/来电等未覆盖边界见 [音量修复记录](#2026-11-14-音量面板导致禁用页消失修复)。本轮未新写仅重复默认常量的测试，不将既有音量回归当作新默认界面的实测。
 
