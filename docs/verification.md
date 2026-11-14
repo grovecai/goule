@@ -10,7 +10,11 @@
 
 真实环境首轮计划检查 [43567003679](https://github.com/grovecai/goule/actions/runs/43567003679) 在 SDK 设置步骤失败：runner 已预装 Android SDK，但 `sdkmanager` 不在 PATH。改为检查固定 SDK/Build Tools 35.0.0 路径，缺失时从 cmdline-tools 的明确路径安装；计划检查使用独立只读并发组，不等待真实发布队列。Gitee 代码同步 [43566543894](https://github.com/grovecai/goule/actions/runs/43566543894) 遇到 300 秒连接超时，增加退出码 128 的最多两次原参数重试；ref 冲突仍立即失败，不强制推送。后续预览/发布结果待续记。
 
-针对 runner 到 Gitee Git HTTPS 的反复连接超时，推送增加 Git 原生 `--ipv4`，保留正常 TLS 校验；这是兼容性重试措施，尚未据此确认网络故障根因。验证期间仅保留最新 main 的代码同步任务，避免旧的重复同步阻塞发布验收；不会取消 Release 同步或实际发布任务。
+针对 runner 到 Gitee Git HTTPS 的反复连接超时，推送增加 Git 原生 `--ipv4`，保留正常 TLS 校验；这是兼容性重试措施，尚未据此确认网络故障根因。尝试取消旧的重复 main 代码同步任务时，这些任务已经自行结束，未实际取消它们，也未取消 Release 同步或实际发布任务。
+
+云端只读预览 [43567451703](https://github.com/grovecai/goule/actions/runs/43567451703) 成功：固定提交的 checkout、JDK 17 设置、SDK/Build Tools 35 定位及真实 GitHub 发布查询全部通过。预览计划为 `mode=new`、`v0.3.14`、versionCode `17`、预发布，基线 v0.3.13；预览未修改版本、创建标签、构建或上传附件。最新自动代码同步 [43567626158](https://github.com/grovecai/goule/actions/runs/43567626158) 成功，证明队列与修正后的 Git 推送能在实际环境执行。
+
+44 项回归及完整 `./scripts/check` 通过；actionlint v1.7.12 对除官方 `queue: max` 新字段外的工作流配置检查通过，该字段由 GitHub 的实际运行验收。每日 cron 已部署，尚未等待次日的真实定时触发；同一代码变化判断已覆盖离线回归。三个 Android 签名 Secrets 尚未配置：已向用户请求保存原私钥及密码到 GitHub 的明确授权，未收到授权前不传输签名材料。真实原签名云端构建、v0.3.14 双平台发布及发布后无变化跳过仍待完成，当前没有新 GitHub/Gitee 发行版。
 
 ## v0.3.13 Gitee 补发（2026-11-14）
 
