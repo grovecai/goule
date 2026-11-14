@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## v0.3.12 发布包手机安装（2026-11-14）
+
+本轮 `./scripts/check` 通过，仓库检查、单元测试、Lint、Debug 和测试 APK 构建均成功（既有 Gradle 任务复用缓存）；未执行设备自动回归。
+
+12:00:57（北京时间）按用户要求，将 GitHub 最新发布版 v0.3.12/code 15 安装至 OPPO PLJ110（Android 16、ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`）。安装前当前用户未检测到 `com.goule.prototype`，本轮未卸载或清数据；`adb install --no-incremental -r` 返回 Success，安装后的 appId 为 `10445`，首次安装与最后更新时间均为上述时间。
+
+重新下载 APK 与 SHA-256 文件，摘要与 GitHub 附件及发布记录一致：`08ef2097ac11e9d2ef1b302d26bd81f04f3f5b2f4fc9dece3e724014552a6711`。apksigner、原发布证书一致性、ZIP 对齐及包名/版本核对通过；安装后回拉 APK 与下载包摘要完全相同。`am start -W` 返回 Status: ok、LaunchState: WARM，截图确认欢迎页及「立下第一条戒律」入口正常。
+
+无障碍 Enabled/Bound/Binding/Crashed 均为空，未代用户同意说明、开启权限或修改手机管家白名单，手机停留欢迎页。本轮仅验证发布包安装与欢迎启动，不代表完整三步、真实授权往返、计时/遮罩或白名单效果已验收。材料位于本机 `/Users/caiyuanrui/.cache/goule-releases/v0.3.12-phone-install-20261114/`，含下载与回拉 APK、包状态/签名、服务记录、欢迎页截图及 `installation-verification.json`。
+
 ## v0.3.12 发布包验证（2026-11-13）
 
 版本 0.3.12/versionCode 15，发布三步顺序欢迎引导与未完成步骤恢复，沿用原签名及预发布方式。`./scripts/check` 通过，Debug/Release 各 41 项单元测试零失败/错误/跳过，Lint、Debug 和回归测试 APK 构建通过；Release 构建通过。最终 APK 从干净发布提交 `708f12477db021ad1e3c7ed1ae84a5795c8398e5` 构建，包内提交记录与标签一致；包名 `com.goule.prototype`、最低 Android 11、target SDK 35、版本和非调试标记核对通过，apksigner 与 ZIP 对齐通过，证书与本轮从 GitHub 回下载的 v0.3.11 一致。
