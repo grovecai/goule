@@ -12,7 +12,9 @@
 
 ## 下载安装
 
-**[下载斩心魔 v0.3.12 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.12/goule-v0.3.12.apk)** · Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.12)
+**[下载斩心魔 v0.3.12 签名 APK](https://github.com/grovecai/goule/releases/download/v0.3.12/goule-v0.3.12.apk)**
+
+Android 11 及以上 · [预发布说明与校验文件](https://github.com/grovecai/goule/releases/tag/v0.3.12)
 
 ## 它如何工作，有什么限制？
 
