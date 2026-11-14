@@ -22,6 +22,14 @@
 
 仅代码同步允许私有仓库，公开发布仍严格检查公开状态。共享队列采用 GitHub 官方 `queue: max`，避免新 push 替换待运行的发行版任务；actionlint v1.7.12 暂不识别该新字段，该字段以 GitHub 服务器实际校验为准，其余字段继续通过 actionlint 验证。
 
+账号安全设置由用户本人完成，随后 13:57 通过仓库管理页保存开源状态，页面显示公开仓库，匿名 API 确认 `public=true private=false default_branch=main`。13:56 的 [main push 自动同步](https://github.com/grovecai/goule/actions/runs/43563856712) 已成功，将 `d5a77e8` 增量更新为 `eb5554b`；本机只推了 GitHub，Gitee main 与 GitHub 完全一致，共享队列配置已被 GitHub 实际接受并执行。
+
+14:03:49，[v0.3.13 补发工作流](https://github.com/grovecai/goule/actions/runs/43563990410) 通过，Gitee Release ID 为 `1307564`，公开可访问的预发布版；名称、版本及正文与 GitHub 一致，正文中 APK/校验文件链接改为实际 Gitee 地址。APK 附件 `3694297` 为 3,950,703 字节，SHA-256 附件 `3694300` 为 84 字节，工作流公开回下载逐字节核对通过。14:05 本机再次不带登录态回下载两项附件，字节、大小和摘要与 GitHub 原附件完全一致：APK SHA-256 为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`，校验文件自身 SHA-256 为 `bf5a111bc6335d8787968f4651fb6b8549d265f8a13d2d46bbe6c3bb4d0db763`。
+
+两端注解标签对象均为 `114e032c319ca4f3017505d4d5ec9fd17f362cc2`，解引用为原发布提交 `9549f7066eb7faa8c948e8ccf5e50cfc46316f07`；验收时 main 均为 `eb5554b4907cf731573ec30b9700d94b978cb2fe`。没有重建或重签 APK，原发布证书与版本身份由原包字节一致性保留。README 国内下载入口已补齐并保留 GitHub 备用入口；21 项 Python 回归及完整 `./scripts/check` 通过，Android 任务复用缓存。本轮不另装手机。
+
+结果保存在上述本机材料目录的 `publication-verification.json`、`gitee-downloads/`、`github-only-auto-sync.log` 和 `release-sync-success.log`。后续提交仅推送 GitHub，依赖 main push 自动同步并再核对两端最新提交；未来发行版由 GitHub Release published/edited 触发，无需本机双推。
+
 ## Gitee 同步配置（2026-11-14）
 
 已新增本地 `gitee` 远端 `https://gitee.com/grovecai/goule.git`，GitHub origin 保持原值。发布工作流监听 GitHub Release published/edited，并支持指定标签手动补发；复制已发布的原签名 APK/SHA-256，不重新构建。推送 main/本次标签后核对远端对象，上传后通过公开下载链接逐字节核对附件，更新正文中的附件链接并回读核对元数据。

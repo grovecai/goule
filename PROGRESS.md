@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-14 14:05（北京时间）[Gitee v0.3.13 预发布版](https://gitee.com/grovecai/goule/releases/tag/v0.3.13) 已完成发布和匿名回下载验收，复用 GitHub 原签名 APK 与 SHA-256 文件，两项附件字节、大小、摘要完全一致，APK 摘要为 `9fbee80b8ff788f943216728d1232ce207a9db2510e21f023ae5bfbeab9383e9`。用户完成账号安全设置后，Gitee 仓库已按授权公开；main、注解标签、发布说明和预发布状态核对通过。13:56 真实 main push 已自动同步成功，GitHub 接受共享队列配置；后续本机只推 GitHub，Actions 自动同步代码和新发行版至 Gitee。README 已补国内下载并保留 GitHub 备用入口，`./scripts/check` 含 21 项 Python 回归通过，详见 [本轮验收](docs/verification.md#v0313-gitee-补发2026-11-14)。
+
 2026-11-14 用户明确改为本机只推 GitHub，平台间自动同步 Gitee 代码及发行版。已新增 main push 的仅代码同步触发，代码同步支持私有仓库、不要求 Release、不修改发行版，与发行版同步共用队列；AGENTS、README 和发布文档已取消本机双推要求。13:52 Gitee 已接收首次完整历史及 v0.3.13 标签，并核对 main=`d5a77e8`、发布标签一致。公开操作被 Gitee 账号安全评级拦截，页面要求用户完成 2FA 或绑定可靠第三方账号；已交由用户处理。尚未创建 Gitee 发行版或上传 APK，实际结果续记于 [本轮验证](docs/verification.md#v0313-gitee-补发2026-11-14)。
 
 2026-11-14 用户已添加 GitHub Actions `GITEE_TOKEN`，开始补发 v0.3.13。原 GitHub APK/SHA-256 重新下载核对通过；首次工作流长时间未返回，已请求取消并补充仓库访问/公开状态预检、阶段日志和命令超时。真实预检已通过令牌认证，但 Gitee 仓库未公开；用户确认私有并明确批准改为公开后继续。已加入默认关闭的手动 `make_public` 选项及回读验证，正在重试，尚未提供国内 APK 入口，结果续记于 [本轮验证](docs/verification.md#v0313-gitee-补发2026-11-14)。

@@ -8,6 +8,8 @@
 
 用户补充：本机只推送 GitHub，由平台间自动同步完成 Gitee 代码及发行版更新。新增 main push 触发的仅代码同步，与 Release 同步共用串行队列，代码更新不要求已有 Release，也不创建或修改发行版；发布标签随 GitHub Release 同步。更新工程约定及发布文档，取消本机双推要求，验收实际 push 自动触发和两端 main 一致。
 
+14:05 完成验收：用户完成账号安全设置后仓库已公开，GitHub main push 的 [自动代码同步](https://github.com/grovecai/goule/actions/runs/43563856712) 成功，Gitee v0.3.13 [补发工作流](https://github.com/grovecai/goule/actions/runs/43563990410) 成功。两端 main 与注解标签一致，预发布状态及正文（附件链接换为 Gitee）一致，APK/SHA-256 两项附件在工作流及本机匿名回下载后均与 GitHub 原包逐字节一致。README 国内下载已补齐；21 项 Python 回归及项目检查通过，共享队列新字段由 GitHub 实际接受并执行。后续本机只推 GitHub，由 Actions 自动同步，故障才手动补发。
+
 首次代码和标签已同步成功，公开操作被 Gitee 账号安全评级拦截，需要用户亲自完成 2FA 或绑定可靠第三方账号。仅代码模式允许私有仓库，公开发行版仍检查公开状态。共享队列启用官方 `queue: max`，不以新 push 替换排队的发行版任务；该新字段通过 GitHub 服务器验收，actionlint 当前版本尚未支持。
 
 本轮续验：用户已添加 `GITEE_TOKEN`，要求补发 v0.3.13。先验证真实同步，再补充国内下载及两端记录。首次 Actions 同步长时间未返回，增加推送前仓库访问/公开状态检查、阶段日志及命令超时，以便区分凭据、网络与附件失败；保留原签名附件、普通推送及回下载验收要求。
