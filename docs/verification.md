@@ -1,6 +1,21 @@
 # Goule 验证手册
 
 
+## 诊断功能构建保留数据覆盖安装（2026-11-15）
+
+按用户「安装到手机」要求，从干净提交 `732fb564c6c1d93953dc1e8bb6a7a36eeaa03158` 构建 Release，沿用原 PKCS12 证书覆盖安装，保留数据。08:01:47（北京时间）OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0 安装成功，正式包从 0.3.13/code 16 更新到 0.3.14/code 17 的诊断功能构建。该 APK 包含本次持久日志，与此前 GitHub v0.3.14 发布附件不同；本轮未创建新发行版或替换发布资产。
+
+Release 构建通过；包名 com.goule.prototype、最低 Android 11/target 35、非 debuggable、包内提交及 16 KiB ZIP 对齐核对通过。原发布证书 SHA-256 与安装前一致（a99c6b29…62103559），签名资料未写入工作区或日志。新 APK 与安装后回拉 base.apk 的 SHA-256 完全一致：`ba44c8158014bafe5b0d6af2b4aa073efbedc06f8e132ad4778d3342c2e08d90`。
+
+安装前后 appId=10445、首次安装时间 2026-11-14 12:00:57 保持。Service 仍有原三条戒律，当前实际/配置参数均为 5/115；逐条对比已用量、剩余额度、eligible 和禁用截止一致：红果 usedMs=11998、remainingMs=288002（向上取整 4 分 49 秒），抖音和小红书均剩余 5 分钟，三者无有效禁用截止。红果和小红书周期起点不变；抖音旧周期已在 07:59:52.023 结束，新服务刷新后按原相位推进一个 120 分钟周期至该边界，不以 08:01 安装时间重新起算，也未清零红果漏计现场。
+
+安装后系统自动重新绑定服务，Enabled/Bound 正常、Binding/Crashed 为空，connected=true、consent=true，三个目标均 eligible=true。真实 Service 的 `--history` 导出包含 process start version=0.3.14/17、原进程 PACKAGE UPDATED 退出、service connected、锁屏状态及三条周期/计时快照；journal failures=0、pendingDropped=0，证明手机已经启用本机持久诊断。
+
+全程未解锁、启动 Activity、打开红果或其他目标、修改戒律、清数据、卸载或开关权限，手机仍保持锁屏。未做新的真实计时/横屏/自然用满回归，不能将安装与日志可读写记为今早漏计根因已确认或已修复。
+
+材料仅保存在本机 `~/.cache/goule-android/timing-diagnostic-install-20261115/`，含安装前后只读采集、原/新/回拉 APK、签名/元数据/源码记录、构建日志和 installation-verification.json；不提交原始手机材料。此次只补安装记录，提交前 `./scripts/check` 通过（Python 46 项、既有单元测试/Lint/Debug 与测试 APK 构建），自动检查结果不代表新的真机行为回归。
+
+
 ## 红果漏计候选机制与持久诊断（2026-11-15）
 
 07:42–07:43（北京时间）OPPO PLJ110（Android 16、ColorOS V16.1.0）只读取证，正式版本 0.3.13/code 16。系统 events/UsageStats 记录红果 07:13:44–07:25:00 前台，Service 仅记录 usedMs=11998、remainingMs=288002，与用户「4 分 49 秒」一致；当前 Enabled/Bound 正常、Binding/Crashed 为空，没有今天新增进程退出、采样拒绝或跨该使用时段的周期重置证据。07:13:57 切入横屏页与约 12 秒累计量接近，但故障瞬间详细无障碍事件已被 32 条内存记录覆盖，不能认定真机根因。完整候选矩阵、证据局限和后续取证方法见 [本轮排查](timing-diagnosis-2026-11-15.md)。
