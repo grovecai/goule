@@ -6,7 +6,7 @@
   "previous_tag": "v0.3.14",
   "source_commit": "e6b7c46de1c55b9522f8faadd63a369af644324c",
   "prerelease": true,
-  "complete": false,
+  "complete": true,
   "changed_files": [
     "app/src/androidTest/java/com/goule/prototype/ForegroundTimingChecks.kt",
     "app/src/androidTest/java/com/goule/prototype/PageRefreshInstrumentation.kt",
