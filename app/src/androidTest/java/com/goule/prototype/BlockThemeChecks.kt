@@ -13,7 +13,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
+import android.widget.Spinner
 import android.widget.TextView
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -41,13 +41,21 @@ internal object BlockThemeChecks {
         importImage("valid")
         val first = onMain { store.resolve() }
         check(first.theme == BlockThemes.custom && first.image?.width == 1440 && first.image.height == 720)
+        onMain {
+            check("custom" in store.pool && store.randomThemes.last() == BlockThemes.custom)
+            check(store.setPool(setOf("custom")) && store.setMode(BlockThemeMode.RANDOM))
+            check(store.resolve().image === first.image) { "Random mode did not select the personal image" }
+            check(store.setMode(BlockThemeMode.CUSTOM))
+        }
         for (kind in listOf("corrupt", "denied", "oversize")) {
             importImage(kind)
             val kept = onMain { store.resolve() }
             check(kept.image === first.image && store.mode == BlockThemeMode.CUSTOM) { "Invalid $kind replaced image or mode" }
         }
+        onMain { check(store.setPool(setOf("elder"))) }
         importImage("replace")
         val replaced = onMain { store.resolve() }
+        check("custom" in store.pool) { "Newly imported image was not added back to the pool" }
         check(replaced.image !== first.image && replaced.image?.width == 90 && replaced.image.height == 300)
         check(Color.blue(checkNotNull(replaced.image).getPixel(40, 100)) > 200)
         // A fresh store reads persisted normalized bytes and preferences, not the import URI or memory cache.
@@ -93,10 +101,10 @@ internal object BlockThemeChecks {
                 navigate(activity, "SETTINGS")
                 click(activity, "选择禁用页主题")
                 check(texts(root(activity)).any { it.text.toString() == "禁用页主题" })
-                // Removing the last selection must recover the checkbox and retain the pool.
-                val last = texts(root(activity)).filterIsInstance<CheckBox>().single { it.isChecked }
-                last.performClick()
-                check(last.isChecked && store.pool == setOf("kitchen"))
+                dropdown(activity, "管理内置主题").setSelection(store.availableThemes.indexOfFirst { it.id == "kitchen" })
+            }
+            instrumentation.waitForIdleSync()
+            onMain {
                 click(activity, "预览 · 锅要糊了")
             }
             instrumentation.waitForIdleSync()
@@ -133,6 +141,8 @@ internal object BlockThemeChecks {
                     check(texts(root(activity)).any { it.text.toString() == "禁用页主题" })
                 }
             } finally { onMain { application.unregisterActivityLifecycleCallbacks(callbacks) } }
+            onMain { dropdown(activity, "显示方式").setSelection(BlockThemeMode.CUSTOM.ordinal) }
+            instrumentation.waitForIdleSync()
             val cancellation = instrumentation.addMonitor(IntentFilter(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 addDataType("image/*")
@@ -143,9 +153,12 @@ internal object BlockThemeChecks {
             check(cancellation.hits == 1)
             instrumentation.removeMonitor(cancellation)
             onMain {
-                check(store.mode == BlockThemeMode.RANDOM && store.resolve(BlockThemes.custom).image === replaced.image)
-                click(activity, "○ 固定主题")
-                click(activity, "返回设置")
+                check(store.mode == BlockThemeMode.CUSTOM && store.resolve(BlockThemes.custom).image === replaced.image)
+                dropdown(activity, "显示方式").setSelection(BlockThemeMode.FIXED.ordinal)
+            }
+            instrumentation.waitForIdleSync()
+            onMain {
+                click(activity, "← 返回设置")
                 check(texts(root(activity)).any { it.text.toString() == "戒律保护" })
                 activity.finish()
             }
@@ -167,6 +180,11 @@ internal object BlockThemeChecks {
     }
 
     private fun root(activity: Activity): View = activity.findViewById(android.R.id.content)
+    private fun dropdown(activity: Activity, label: String): Spinner {
+        fun views(view: View): List<View> = listOf(view) + if (view is ViewGroup)
+            (0 until view.childCount).flatMap { views(view.getChildAt(it)) } else emptyList()
+        return views(root(activity)).filterIsInstance<Spinner>().single { it.contentDescription == label }
+    }
     private fun texts(view: View): List<TextView> = (if (view is TextView) listOf(view) else emptyList()) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { texts(view.getChildAt(it)) } else emptyList()
     private fun click(activity: Activity, label: String) {

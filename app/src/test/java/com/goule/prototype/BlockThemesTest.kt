@@ -45,4 +45,40 @@ class BlockThemesTest {
             assertTrue(theme.name.isNotBlank() && theme.headline.isNotBlank() && theme.reminder.isNotBlank() && theme.description.isNotBlank())
         }
     }
+
+    @Test fun deletedThemesNeverReturnThroughFixedOrRandomFallbacks() {
+        val deleted = setOf("kitchen", "garden")
+        assertEquals(BlockThemes.default,
+            BlockThemes.choose(BlockThemeMode.FIXED, "kitchen", setOf("garden"), false, deleted))
+        assertEquals(BlockThemes.default,
+            BlockThemes.choose(BlockThemeMode.RANDOM, "kitchen", setOf("garden"), false, deleted))
+        assertEquals("exam",
+            BlockThemes.choose(BlockThemeMode.RANDOM, null, setOf("garden", "exam"), true, deleted) { size ->
+                assertEquals(1, size)
+                0
+            }.id)
+    }
+
+    @Test fun elderSurvivesEvenAnInvalidDeleteEverythingPreference() {
+        val deleted = BlockThemes.all.map { it.id }.toSet()
+        assertEquals(listOf(BlockThemes.default), BlockThemes.available(deleted))
+        assertEquals(BlockThemes.default, BlockThemes.find("elder", deleted))
+        assertEquals(BlockThemes.default, BlockThemes.find("exam", deleted))
+        assertEquals(BlockThemes.default, BlockThemes.choose(BlockThemeMode.CUSTOM, null, emptySet(), false, deleted))
+    }
+
+    @Test fun onlyTheTenAdditionalBuiltInsAreDeletable() {
+        assertFalse(BlockThemes.canDelete("elder"))
+        assertFalse(BlockThemes.canDelete("custom"))
+        assertFalse(BlockThemes.canDelete("unknown"))
+        assertEquals(10, BlockThemes.all.count { BlockThemes.canDelete(it.id) })
+    }
+
+    @Test fun randomPoolCanChoosePersonalImageAndExcludesItWhenUnavailable() {
+        assertEquals(BlockThemes.custom, BlockThemes.choose(BlockThemeMode.RANDOM, null, setOf("custom"), true))
+        assertEquals(BlockThemes.default, BlockThemes.choose(BlockThemeMode.RANDOM, null, setOf("custom"), false))
+        assertEquals("exam", BlockThemes.choose(BlockThemeMode.RANDOM, null, setOf("custom", "exam"), false).id)
+        assertEquals(BlockThemes.custom, BlockThemes.randomChoices(setOf("exam"), true).last())
+        assertFalse(BlockThemes.randomChoices(emptySet(), false).contains(BlockThemes.custom))
+    }
 }

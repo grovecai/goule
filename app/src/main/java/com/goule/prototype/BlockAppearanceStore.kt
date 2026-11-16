@@ -44,29 +44,49 @@ internal class BlockAppearanceStore private constructor(private val context: Con
     private var importMessage: String? = null
 
     val mode get() = BlockThemeMode.parse(prefs.getString("mode", null))
-    val fixedId get() = BlockThemes.find(prefs.getString("fixed", null)).id
-    val pool: Set<String> get() = prefs.getStringSet("pool", null)?.toSet()
-        ?: BlockThemes.all.mapTo(mutableSetOf()) { it.id }
+    val deletedIds: Set<String> get() = prefs.getStringSet("deleted", emptySet()).orEmpty().toSet()
+    val availableThemes get() = BlockThemes.available(deletedIds)
+    val randomThemes get() = BlockThemes.randomChoices(deletedIds, hasCustom)
+    val fixedId get() = BlockThemes.find(prefs.getString("fixed", null), deletedIds).id
+    val pool: Set<String> get() {
+        val available = randomThemes.mapTo(mutableSetOf()) { it.id }
+        val selected = (prefs.getStringSet("pool", null)?.intersect(available) ?: available).toMutableSet()
+        // Earlier versions could not include personal images. Add an existing image once, while
+        // retaining deliberate exclusions saved with the new random-pool editor.
+        if (!prefs.getBoolean("custom_pool_initialized", false) && hasCustom) selected.add(BlockThemes.custom.id)
+        return selected.ifEmpty { setOf(BlockThemes.default.id) }
+    }
     val hasCustom get() = imageFile.baseFile.isFile
     val summary get() = when (mode) {
         BlockThemeMode.FIXED -> "固定 · ${BlockThemes.find(fixedId).name}"
-        BlockThemeMode.RANDOM -> "随机 · ${BlockThemes.all.count { it.id in pool }} 个主题"
+        BlockThemeMode.RANDOM -> "随机 · ${pool.size} 个主题"
         BlockThemeMode.CUSTOM -> if (hasCustom) "自定义图片" else "自定义图片不可用 · 戒律长老"
     }
 
     fun setMode(value: BlockThemeMode): Boolean = !importing &&
         (value != BlockThemeMode.CUSTOM || hasCustom) && prefs.edit().putString("mode", value.name).commit()
 
-    fun setFixed(id: String): Boolean = !importing && prefs.edit()
-        .putString("fixed", BlockThemes.find(id).id).putString("mode", BlockThemeMode.FIXED.name).commit()
+    fun setFixed(id: String): Boolean = !importing && availableThemes.any { it.id == id } && prefs.edit()
+        .putString("fixed", id).putString("mode", BlockThemeMode.FIXED.name).commit()
 
     fun setPool(ids: Set<String>): Boolean {
-        val valid = ids.intersect(BlockThemes.all.map { it.id }.toSet())
-        return !importing && valid.isNotEmpty() && prefs.edit().putStringSet("pool", valid).commit()
+        val valid = ids.intersect(randomThemes.map { it.id }.toSet())
+        return !importing && valid.isNotEmpty() && prefs.edit().putStringSet("pool", valid)
+            .putBoolean("custom_pool_initialized", true).commit()
+    }
+
+    fun deleteBuiltIn(id: String): Boolean {
+        if (importing || !BlockThemes.canDelete(id) || id in deletedIds) return false
+        val deleted = deletedIds + id
+        val remainingPool = (pool - id).ifEmpty { setOf(BlockThemes.default.id) }
+        return prefs.edit().putStringSet("deleted", deleted)
+            .putString("fixed", BlockThemes.find(fixedId, deleted).id)
+            .putStringSet("pool", remainingPool).putBoolean("custom_pool_initialized", true).commit()
     }
 
     fun resolve(theme: BlockTheme? = null): BlockAppearance {
-        val chosen = theme ?: BlockThemes.choose(mode, fixedId, pool, hasCustom)
+        val chosen = if (theme == null) BlockThemes.choose(mode, fixedId, pool, hasCustom, deletedIds)
+            else if (theme.id == BlockThemes.custom.id) theme else BlockThemes.find(theme.id, deletedIds)
         if (chosen.id != BlockThemes.custom.id) return BlockAppearance(chosen)
         val image = customImage()
         return if (image != null) BlockAppearance(chosen, image) else BlockAppearance(BlockThemes.default)
@@ -83,6 +103,8 @@ internal class BlockAppearanceStore private constructor(private val context: Con
         if (importing) return false
         val edit = prefs.edit()
         if (mode == BlockThemeMode.CUSTOM) edit.putString("mode", BlockThemeMode.FIXED.name).putString("fixed", BlockThemes.default.id)
+        edit.putStringSet("pool", (pool - BlockThemes.custom.id).ifEmpty { setOf(BlockThemes.default.id) })
+            .putBoolean("custom_pool_initialized", true)
         if (!edit.commit()) return false
         synchronized(this) {
             imageFile.delete()
@@ -147,7 +169,10 @@ internal class BlockAppearanceStore private constructor(private val context: Con
             main.post {
                 importing = false
                 importMessage = if (result.isSuccess) {
-                    if (setMode(BlockThemeMode.CUSTOM)) "图片已保存，已启用自定义禁用页"
+                    val saved = prefs.edit().putString("mode", BlockThemeMode.CUSTOM.name)
+                        .putStringSet("pool", pool + BlockThemes.custom.id)
+                        .putBoolean("custom_pool_initialized", true).commit()
+                    if (saved) "图片已保存，已启用自定义禁用页并加入随机池"
                     else "图片已保存，请重新选择自定义图片模式"
                 } else {
                     val error = result.exceptionOrNull()

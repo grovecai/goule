@@ -36,13 +36,22 @@ internal object BlockThemes {
     val default get() = all.first()
     val custom = BlockTheme("custom", "自定义图片", "先放下手机", "把时间留给你真正想做的事。", "你选择的禁用页图片")
 
-    fun find(id: String?) = all.firstOrNull { it.id == id } ?: default
+    fun canDelete(id: String) = id != default.id && all.any { it.id == id }
+
+    // The original elder remains available even if preferences contain a stale deletion entry.
+    fun available(deleted: Set<String>) = all.filter { it.id == default.id || it.id !in deleted }
+
+    fun randomChoices(deleted: Set<String>, hasCustom: Boolean) = available(deleted) +
+        if (hasCustom) listOf(custom) else emptyList()
+
+    fun find(id: String?, deleted: Set<String> = emptySet()) = available(deleted).firstOrNull { it.id == id } ?: default
 
     fun choose(mode: BlockThemeMode, fixedId: String?, pool: Set<String>, hasCustom: Boolean,
+        deleted: Set<String> = emptySet(),
         nextInt: (Int) -> Int = { Random.nextInt(it) }): BlockTheme = when (mode) {
-        BlockThemeMode.FIXED -> find(fixedId)
+        BlockThemeMode.FIXED -> find(fixedId, deleted)
         BlockThemeMode.CUSTOM -> if (hasCustom) custom else default
-        BlockThemeMode.RANDOM -> all.filter { it.id in pool }.let {
+        BlockThemeMode.RANDOM -> randomChoices(deleted, hasCustom).filter { it.id in pool }.let {
             if (it.isEmpty()) default else it[nextInt(it.size)]
         }
     }
