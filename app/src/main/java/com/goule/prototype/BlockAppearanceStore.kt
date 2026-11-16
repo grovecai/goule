@@ -1,7 +1,7 @@
 package com.goule.prototype
 
-import android.content.Context
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -9,19 +9,19 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.AtomicFile
+import android.util.LruCache
 import java.io.File
 import java.io.IOException
-import java.io.ByteArrayOutputStream
+import java.util.UUID
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
-internal fun BlockTheme.artResource(): Int = when (id) {
+internal fun BlockTheme.artResource(): Int = when ((image as? ThemeImage.Bundled)?.key) {
     "rescue" -> R.drawable.block_rescue
     "magic" -> R.drawable.block_magic
     "kitchen" -> R.drawable.block_kitchen
     "garden" -> R.drawable.block_garden
     "marriage" -> R.drawable.block_marriage
-    "baby" -> R.drawable.block_baby
     "work" -> R.drawable.block_work
     "exam" -> R.drawable.block_exam
     "sunlight" -> R.drawable.block_sunlight
@@ -31,94 +31,155 @@ internal fun BlockTheme.artResource(): Int = when (id) {
 
 internal data class BlockAppearance(val theme: BlockTheme, val image: Bitmap? = null)
 
-/** Small independent preferences and a normalized private image; no rule-store writes. */
+/** One theme collection and independent appearance preferences; never writes the rule store. */
 internal class BlockAppearanceStore private constructor(private val context: Context) {
     private val prefs = context.getSharedPreferences("block_appearance", Context.MODE_PRIVATE)
-    private val imageFile = AtomicFile(File(context.noBackupFilesDir, "block-image.webp"))
+    private val images = File(context.noBackupFilesDir, "block-themes")
+    private val draftFile = AtomicFile(File(context.cacheDir, "block-theme-draft.webp"))
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
-    private var cachedImage: Bitmap? = null
+    private val cache = object : LruCache<String, Bitmap>(16 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
+    }
+    private var generation = 0
     var importing = false
         private set
     var onImportFinished: (() -> Unit)? = null
     private var importMessage: String? = null
 
+    init { migrateLegacy() }
+
     val mode get() = BlockThemeMode.parse(prefs.getString("mode", null))
     val deletedIds: Set<String> get() = prefs.getStringSet("deleted", emptySet()).orEmpty().toSet()
-    val availableThemes get() = BlockThemes.available(deletedIds)
-    val randomThemes get() = BlockThemes.randomChoices(deletedIds, hasCustom)
-    val fixedId get() = BlockThemes.find(prefs.getString("fixed", null), deletedIds).id
-    val pool: Set<String> get() {
-        val available = randomThemes.mapTo(mutableSetOf()) { it.id }
-        val selected = (prefs.getStringSet("pool", null)?.intersect(available) ?: available).toMutableSet()
-        // Earlier versions could not include personal images. Add an existing image once, while
-        // retaining deliberate exclusions saved with the new random-pool editor.
-        if (!prefs.getBoolean("custom_pool_initialized", false) && hasCustom) selected.add(BlockThemes.custom.id)
-        return selected.ifEmpty { setOf(BlockThemes.default.id) }
-    }
-    val hasCustom get() = imageFile.baseFile.isFile
-    val summary get() = when (mode) {
-        BlockThemeMode.FIXED -> "固定 · ${BlockThemes.find(fixedId).name}"
-        BlockThemeMode.RANDOM -> "随机 · ${pool.size} 个主题"
-        BlockThemeMode.CUSTOM -> if (hasCustom) "自定义图片" else "自定义图片不可用 · 戒律长老"
-    }
+    val personalThemes get() = ThemeCodec.decode(prefs.getString("personal_themes", null))
+    val availableThemes get() = BlockThemes.available(deletedIds, personalThemes)
+    val fixedId get() = find(prefs.getString("fixed", null)).id
+    val pool: Set<String> get() = (prefs.getStringSet("pool", null)?.intersect(availableThemes.map { it.id }.toSet())
+        ?: availableThemes.mapTo(mutableSetOf()) { it.id }).ifEmpty { setOf(BlockThemes.default.id) }
+    val summary get() = if (mode == BlockThemeMode.FIXED) "固定 · ${find(fixedId).name}" else "随机 · ${pool.size} 个主题"
+    val hasDraftImage get() = draftFile.baseFile.isFile
 
-    fun setMode(value: BlockThemeMode): Boolean = !importing &&
-        (value != BlockThemeMode.CUSTOM || hasCustom) && prefs.edit().putString("mode", value.name).commit()
-
-    fun setFixed(id: String): Boolean = !importing && availableThemes.any { it.id == id } && prefs.edit()
+    fun find(id: String?) = BlockThemes.find(id, availableThemes)
+    fun canDelete(id: String) = id != BlockThemes.default.id && availableThemes.any { it.id == id }
+    fun canEdit(id: String) = personalThemes.any { it.id == id }
+    fun setMode(value: BlockThemeMode) = !importing && prefs.edit().putString("mode", value.name).commit()
+    fun setFixed(id: String) = !importing && availableThemes.any { it.id == id } && prefs.edit()
         .putString("fixed", id).putString("mode", BlockThemeMode.FIXED.name).commit()
-
     fun setPool(ids: Set<String>): Boolean {
-        val valid = ids.intersect(randomThemes.map { it.id }.toSet())
-        return !importing && valid.isNotEmpty() && prefs.edit().putStringSet("pool", valid)
-            .putBoolean("custom_pool_initialized", true).commit()
-    }
-
-    fun deleteBuiltIn(id: String): Boolean {
-        if (importing || !BlockThemes.canDelete(id) || id in deletedIds) return false
-        val deleted = deletedIds + id
-        val remainingPool = (pool - id).ifEmpty { setOf(BlockThemes.default.id) }
-        return prefs.edit().putStringSet("deleted", deleted)
-            .putString("fixed", BlockThemes.find(fixedId, deleted).id)
-            .putStringSet("pool", remainingPool).putBoolean("custom_pool_initialized", true).commit()
+        val valid = ids.intersect(availableThemes.map { it.id }.toSet())
+        return !importing && valid.isNotEmpty() && prefs.edit().putStringSet("pool", valid).commit()
     }
 
     fun resolve(theme: BlockTheme? = null): BlockAppearance {
-        val chosen = if (theme == null) BlockThemes.choose(mode, fixedId, pool, hasCustom, deletedIds)
-            else if (theme.id == BlockThemes.custom.id) theme else BlockThemes.find(theme.id, deletedIds)
-        if (chosen.id != BlockThemes.custom.id) return BlockAppearance(chosen)
-        val image = customImage()
-        return if (image != null) BlockAppearance(chosen, image) else BlockAppearance(BlockThemes.default)
+        val chosen = if (theme == null) BlockThemes.choose(mode, fixedId, pool, availableThemes) else find(theme.id)
+        val local = chosen.image as? ThemeImage.Local ?: return BlockAppearance(chosen)
+        val image = cache.get(chosen.id) ?: decode(imageFile(local.fileName))?.also { cache.put(chosen.id, it) }
+        return if (image == null) BlockAppearance(BlockThemes.default) else BlockAppearance(chosen, image)
     }
 
-    @Synchronized private fun customImage(): Bitmap? {
-        cachedImage?.let { return it }
-        return try {
-            imageFile.openRead().use { BitmapFactory.decodeStream(it) }?.also { cachedImage = it }
-        } catch (_: IOException) { null }
+    private fun imageFile(name: String): AtomicFile {
+        require(ThemeCodec.safeFile(name))
+        return AtomicFile(File(images, name))
     }
 
-    fun deleteImage(): Boolean {
-        if (importing) return false
-        val edit = prefs.edit()
-        if (mode == BlockThemeMode.CUSTOM) edit.putString("mode", BlockThemeMode.FIXED.name).putString("fixed", BlockThemes.default.id)
-        edit.putStringSet("pool", (pool - BlockThemes.custom.id).ifEmpty { setOf(BlockThemes.default.id) })
-            .putBoolean("custom_pool_initialized", true)
-        if (!edit.commit()) return false
-        synchronized(this) {
-            imageFile.delete()
-            cachedImage = null // Existing views can keep their bitmap until detached.
+    private fun decode(file: AtomicFile): Bitmap? = try {
+        file.openRead().use { BitmapFactory.decodeStream(it) }
+    } catch (_: IOException) { null }
+
+    @Synchronized fun draftImage(): Bitmap? = cache.get("__draft") ?: decode(draftFile)?.also { cache.put("__draft", it) }
+
+    @Synchronized fun discardDraft() {
+        generation++
+        importing = false
+        draftFile.delete()
+        cache.remove("__draft")
+    }
+
+    fun savePersonal(draft: ThemeDraft): BlockTheme? {
+        if (importing) return null
+        val value = draft.trimmed()
+        if (value.error() != null || availableThemes.any { it.name == value.name && it.id != value.id }) return null
+        val previous = value.id?.let { id -> personalThemes.firstOrNull { it.id == id } ?: return null }
+        val id = previous?.id ?: "user_${UUID.randomUUID()}"
+        val previousImage = previous?.image as? ThemeImage.Local
+        if (hasDraftImage && draftImage() == null) return null
+        if (!hasDraftImage && (previousImage == null || !imageFile(previousImage.fileName).baseFile.isFile)) return null
+        val nextImage = if (hasDraftImage) ThemeImage.Local("${UUID.randomUUID()}.webp") else checkNotNull(previousImage)
+        val next = BlockTheme(id, value.name, value.headline, value.reminder, "主题「${value.name}」的图片",
+            value.closeLabel, value.homeLabel, nextImage)
+        try {
+            if (hasDraftImage) draftFile.openRead().use { input -> writeAtomic(imageFile(nextImage.fileName)) { input.copyTo(it) } }
+            val themes = personalThemes.filterNot { it.id == id } + next
+            val edit = prefs.edit().putString("personal_themes", ThemeCodec.encode(themes))
+            if (previous == null) edit.putString("fixed", id).putStringSet("pool", pool + id)
+            if (!edit.commit()) {
+                if (nextImage != previousImage) imageFile(nextImage.fileName).delete()
+                return null
+            }
+            cache.remove(id)
+            if (previousImage != null && previousImage != nextImage) imageFile(previousImage.fileName).delete()
+            discardDraft()
+            return next
+        } catch (_: IOException) {
+            if (nextImage != previousImage) imageFile(nextImage.fileName).delete()
+            return null
         }
-        return !hasCustom
+    }
+
+    fun deleteTheme(id: String): Boolean {
+        if (importing || !canDelete(id)) return false
+        val personal = personalThemes.firstOrNull { it.id == id }
+        val edit = prefs.edit().putString("fixed", if (fixedId == id) BlockThemes.default.id else fixedId)
+            .putStringSet("pool", (pool - id).ifEmpty { setOf(BlockThemes.default.id) })
+        if (personal != null) edit.putString("personal_themes", ThemeCodec.encode(personalThemes.filterNot { it.id == id }))
+        else edit.putStringSet("deleted", deletedIds + id)
+        if (!edit.commit()) return false
+        cache.remove(id)
+        (personal?.image as? ThemeImage.Local)?.let { imageFile(it.fileName).delete() }
+        return true
+    }
+
+    private fun migrateLegacy() {
+        if (prefs.getBoolean("unified_library", false)) return
+        val legacy = AtomicFile(File(context.noBackupFilesDir, "block-image.webp"))
+        val personal = mutableListOf<BlockTheme>()
+        try {
+            if (legacy.baseFile.isFile) {
+                val photo = ThemeImage.Local("legacy-custom.webp")
+                legacy.openRead().use { input -> writeAtomic(imageFile(photo.fileName)) { input.copyTo(it) } }
+                personal.add(BlockTheme("custom", "我的主题", "先放下手机", "把时间留给你真正想做的事。",
+                    "从原有图片迁移的主题", image = photo))
+            }
+            val available = BlockThemes.available(deletedIds, personal)
+            val ids = available.map { it.id }.toSet()
+            val selected = (prefs.getStringSet("pool", null)?.intersect(ids) ?: ids).toMutableSet()
+            if (personal.isNotEmpty() && !prefs.getBoolean("custom_pool_initialized", false)) selected.add("custom")
+            val fixed = if (prefs.getString("mode", null) == "CUSTOM" && personal.isNotEmpty()) "custom"
+                else BlockThemes.find(prefs.getString("fixed", null), available).id
+            val saved = prefs.edit().putString("personal_themes", ThemeCodec.encode(personal))
+                .putString("mode", mode.name).putString("fixed", fixed)
+                .putStringSet("pool", selected.ifEmpty { setOf(BlockThemes.default.id) })
+                .putBoolean("unified_library", true).commit()
+            if (saved) legacy.delete()
+            else importMessage = "旧主题未能保存，原图片已保留，请稍后重开应用"
+        } catch (_: IOException) {
+            importMessage = "旧主题图片暂时无法迁移，原文件已保留，请稍后重开应用"
+        }
+    }
+
+    private fun writeAtomic(file: AtomicFile, write: (java.io.FileOutputStream) -> Unit) {
+        val output = file.startWrite()
+        try { write(output); file.finishWrite(output) }
+        catch (error: Throwable) { file.failWrite(output); throw error }
     }
 
     fun takeImportMessage(): String? = importMessage.also { importMessage = null }
 
-    /** Copy/decode/compress off the main thread so a large photo cannot stall service timing. */
+    /** Normalize a temporary draft off the main thread; saved themes remain untouched. */
     fun importImage(uri: Uri) {
         if (importing) return
         importing = true
+        val token = synchronized(this) { ++generation }
         worker.execute {
             val result = runCatching {
                 require(uri.scheme == "content") { "请通过系统图片选择器选择图片" }
@@ -148,44 +209,30 @@ internal class BlockAppearanceStore private constructor(private val context: Con
                         decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                     }
                     try {
-                        val encoded = ByteArrayOutputStream().use { buffer ->
+                        val encoded = java.io.ByteArrayOutputStream().use { buffer ->
                             check(bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, buffer))
                             buffer.toByteArray()
                         }
                         synchronized(this) {
-                            val output = imageFile.startWrite()
-                            try {
-                                output.write(encoded)
-                                imageFile.finishWrite(output)
-                                cachedImage = null
-                            } catch (error: Throwable) {
-                                imageFile.failWrite(output)
-                                throw error
+                            if (token == generation) {
+                                writeAtomic(draftFile) { it.write(encoded) }
+                                cache.remove("__draft")
                             }
                         }
                     } finally { bitmap.recycle() }
                 } finally { source.delete() }
             }
             main.post {
+                if (token != generation) return@post
                 importing = false
-                importMessage = if (result.isSuccess) {
-                    val saved = prefs.edit().putString("mode", BlockThemeMode.CUSTOM.name)
-                        .putStringSet("pool", pool + BlockThemes.custom.id)
-                        .putBoolean("custom_pool_initialized", true).commit()
-                    if (saved) "图片已保存，已启用自定义禁用页并加入随机池"
-                    else "图片已保存，请重新选择自定义图片模式"
-                } else {
-                    val error = result.exceptionOrNull()
-                    if (error is IllegalArgumentException) error.message ?: "无法导入这张图片"
-                    else "无法导入这张图片，请选择完整的图片文件重试"
-                }
+                importMessage = if (result.isSuccess) "图片已选择，请保存主题"
+                    else (result.exceptionOrNull() as? IllegalArgumentException)?.message ?: "图片处理失败，已保存的主题保持不变"
                 onImportFinished?.invoke()
             }
         }
     }
 
     companion object {
-        // get() always passes applicationContext; no Activity or Service is retained here.
         @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: BlockAppearanceStore? = null
         fun get(context: Context): BlockAppearanceStore = instance ?: synchronized(this) {

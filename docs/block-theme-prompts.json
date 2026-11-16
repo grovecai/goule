@@ -34,12 +34,6 @@
       "asset": "app/src/main/res/drawable-nodpi/block_marriage.webp"
     },
     {
-      "id": "baby",
-      "name": "奶瓶召唤",
-      "prompt": "Use case: illustration-story. Asset type: Android blocking-screen illustration, landscape 3:2, no UI. Create a polished dramatic Chinese fantasy comic painting matching the project's existing stern cultivation elder: highly rendered expressive faces, dynamic foreshortened hands, rich deep purple-black shadows, gold-red energy streaks and rim lighting, cinematic graphic-novel realism, comic exaggerated admonishment rather than horror. Strong readable central subjects, medium close framing with scene cues, art fills frame, key faces and props within central 75 percent for mobile crops. No writing, no letters, no logos, no watermark, no speech bubbles, no borders. Scene: A tired but resolute adult young Chinese parent in purple home clothes holding a baby wrapped safely in a gold blanket in one arm, brandishing a baby bottle toward viewer with other hand, baby curious and peaceful, cot behind, epic purple and golden domestic comedy.",
-      "asset": "app/src/main/res/drawable-nodpi/block_baby.webp"
-    },
-    {
       "id": "work",
       "name": "摸鱼警报",
       "prompt": "Use case: illustration-story. Asset type: Android blocking-screen illustration, landscape 3:2, no UI. Create a polished dramatic Chinese fantasy comic painting matching the project's existing stern cultivation elder: highly rendered expressive faces, dynamic foreshortened hands, rich deep purple-black shadows, gold-red energy streaks and rim lighting, cinematic graphic-novel realism, comic exaggerated admonishment rather than horror. Strong readable central subjects, medium close framing with scene cues, art fills frame, key faces and props within central 75 percent for mobile crops. No writing, no letters, no logos, no watermark, no speech bubbles, no borders. Scene: A stern Chinese office manager in white shirt and purple tie leans over a cubicle pointing at viewer, laptop with abstract blank charts and a comical small golden ox desk figurine, office clock, purple storm-like window light and gold rim light, exaggerated comic urgency, no firing document.",

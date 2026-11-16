@@ -77,6 +77,7 @@ class PageRefreshInstrumentation : Instrumentation() {
             onMain { activity.finish() }
             waitForIdleSync()
             OnboardingFlowChecks.run(this)
+            ThemeMigrationChecks.run(this)
             BlockThemeChecks.run(this)
             ThemeManagementChecks.run(this)
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
@@ -88,7 +89,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                 "PASS: ColorOS passive containers preserve usage and deadline while shade/settings/interrupt still pause\n" +
                 "PASS: onboarding visits three steps in order and resumes before completion\n" +
                 "PASS: block themes select persist preview and import images with safe failure recovery\n" +
-                "PASS: theme dropdowns protect elder and persist deletions across every selection path\n")
+                "PASS: theme dropdowns protect elder and persist deletions across every selection path\n" +
+                "PASS: unified theme content and legacy picture migration preserve fixed and random choices\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

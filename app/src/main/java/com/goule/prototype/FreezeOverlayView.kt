@@ -3,6 +3,7 @@ package com.goule.prototype
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
+import android.util.TypedValue
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -113,12 +114,17 @@ internal class FreezeOverlayView(
         }.also { dialogueView = it }
     }
 
-    private fun action(primary: Boolean) = Button(context).apply {
-        setText(if (primary) R.string.close_target else R.string.go_home)
+    private fun action(primary: Boolean, compact: Boolean) = Button(context).apply {
+        text = if (primary) appearance.theme.closeLabel else appearance.theme.homeLabel
+        contentDescription = "$text，${if (primary) "打开最近任务" else "返回桌面"}"
         setTextColor(if (primary) outline else paper)
         isAllCaps = false
         stateListAnimator = null
         minHeight = context.dp(48)
+        setPadding(context.dp(6), paddingTop, context.dp(6), paddingBottom)
+        maxLines = 1
+        setTextSize(TypedValue.COMPLEX_UNIT_SP,
+            if (compact && text.toString().codePointCount(0, text.length) > 4) 12f else 14f)
         backgroundTintList = null
         background = if (primary) context.surface(paper, 9)
             else context.surface(backdrop, 9, Color.rgb(143, 107, 94))
@@ -138,12 +144,12 @@ internal class FreezeOverlayView(
         })
         if (compact) {
             addView(LinearLayout(context).apply {
-                addView(action(true), LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = context.dp(8) })
-                addView(action(false), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(action(true, compact), LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = context.dp(8) })
+                addView(action(false, compact), LinearLayout.LayoutParams(0, -2, 1f))
             }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = context.dp(8) })
         } else {
-            addView(action(true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = context.dp(8) })
-            addView(action(false), LinearLayout.LayoutParams(-1, -2).apply { topMargin = context.dp(8) })
+            addView(action(true, compact), LinearLayout.LayoutParams(-1, -2).apply { topMargin = context.dp(8) })
+            addView(action(false, compact), LinearLayout.LayoutParams(-1, -2).apply { topMargin = context.dp(8) })
         }
     }
 

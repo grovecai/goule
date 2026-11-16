@@ -29,6 +29,7 @@ printf '%s\n' "$goule_result"
    "$goule_result" == *"PASS: onboarding visits three steps"* &&
    "$goule_result" == *"PASS: block themes select persist preview and import images"* &&
    "$goule_result" == *"PASS: theme dropdowns protect elder and persist deletions"* &&
+   "$goule_result" == *"PASS: unified theme content and legacy picture migration"* &&
    "$goule_result" != *"INSTRUMENTATION_FAILED"* && "$goule_result" != *"FAIL:"* ]]
 if [[ -n "${GOULE_UI_OUTPUT_DIR:-}" ]]; then
     mkdir -p "$GOULE_UI_OUTPUT_DIR"

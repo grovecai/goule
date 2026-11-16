@@ -45,7 +45,7 @@ import java.io.FileDescriptor
 import java.io.PrintWriter
 
 class MainActivity : Activity() {
-    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION, THEMES, THEME_PREVIEW }
+    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION, THEMES, THEME_PREVIEW, THEME_EDITOR }
     private val connectionState = ServiceConnectionState()
 
     private val store by lazy { RuleStore.get(this) }
@@ -53,6 +53,8 @@ class MainActivity : Activity() {
     private var previewThemeId = BlockThemes.default.id
     private var managedThemeId: String? = null
     private var themeDialog: AlertDialog? = null
+    private var themeDraft = ThemeDraft()
+    private var themeDirty = false
     private val handler = Handler(Looper.getMainLooper())
     private var onboarding = false
     private var showSetupHelp = false
@@ -110,6 +112,10 @@ class MainActivity : Activity() {
             awaitingFirstConnection = it.getBoolean("awaiting")
             previewThemeId = it.getString("previewTheme", BlockThemes.default.id)
             managedThemeId = it.getString("managedTheme")
+            themeDraft = ThemeDraft(it.getString("themeDraftId"), it.getString("themeName", "我的主题"),
+                it.getString("themeHeadline", "先放下手机"), it.getString("themeReminder", "把时间留给你真正想做的事。"),
+                it.getString("themeClose", "关闭 App"), it.getString("themeHome", "返回桌面"))
+            themeDirty = it.getBoolean("themeDirty")
         }
         if (Build.VERSION.SDK_INT >= 33) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(0) { back() }
@@ -141,6 +147,13 @@ class MainActivity : Activity() {
         outState.putBoolean("awaiting", awaitingFirstConnection)
         outState.putString("previewTheme", previewThemeId)
         outState.putString("managedTheme", managedThemeId)
+        outState.putString("themeDraftId", themeDraft.id)
+        outState.putString("themeName", themeDraft.name)
+        outState.putString("themeHeadline", themeDraft.headline)
+        outState.putString("themeReminder", themeDraft.reminder)
+        outState.putString("themeClose", themeDraft.closeLabel)
+        outState.putString("themeHome", themeDraft.homeLabel)
+        outState.putBoolean("themeDirty", themeDirty)
         super.onSaveInstanceState(outState)
     }
 
@@ -278,6 +291,7 @@ class MainActivity : Activity() {
             Page.RISK_INTERCEPTION -> riskInterceptionSettings()
             Page.THEMES -> themes()
             Page.THEME_PREVIEW -> themePreview()
+            Page.THEME_EDITOR -> themeEditor()
         }
         if (page == Page.RULES || page == Page.SETTINGS) bottomNavigation()
         visibleSignature = signature()
@@ -876,8 +890,11 @@ class MainActivity : Activity() {
     }
 
     private fun updateThemeImport() {
-        appearanceStore.takeImportMessage()?.let { toast(it) }
-        if (page == Page.THEMES) render(keepScroll = true)
+        appearanceStore.takeImportMessage()?.let {
+            toast(it)
+            if (page == Page.THEME_EDITOR && appearanceStore.hasDraftImage) themeDirty = true
+        }
+        if (page == Page.THEMES || page == Page.THEME_EDITOR) render(keepScroll = true)
     }
 
     private fun themes() {
@@ -886,26 +903,24 @@ class MainActivity : Activity() {
         content.addView(copyText("所有戒律共用此设置，下次显示禁用页时生效。", 14f, NIGHT_MUTED))
         themeDropdown("显示方式", BlockThemeMode.entries.map { it.label }, appearanceStore.mode.ordinal) { index ->
             val mode = BlockThemeMode.entries[index]
-            if (mode == BlockThemeMode.CUSTOM && !appearanceStore.hasCustom) pickThemeImage()
-            else if (!appearanceStore.setMode(mode)) toast("保存失败，请重试")
+            if (!appearanceStore.setMode(mode)) toast("保存失败，请重试")
             render(keepScroll = true)
         }
-        if (appearanceStore.mode == BlockThemeMode.CUSTOM) customThemeControls()
         if (appearanceStore.mode == BlockThemeMode.RANDOM) {
-            content.addView(copyText("从勾选的内置主题和自定义图片中随机抽取。停留和旋转屏幕时不会换图。", 14f, NIGHT_MUTED))
+            content.addView(copyText("从勾选的主题中随机抽取。停留和旋转屏幕时不会换图。", 14f, NIGHT_MUTED))
             content.addView(button("选择随机主题（${appearanceStore.pool.size} 个）", soft = true) {
                 chooseRandomThemes()
             }.apply { isEnabled = !appearanceStore.importing })
         }
         val themes = appearanceStore.availableThemes
-        val selected = if (appearanceStore.mode == BlockThemeMode.FIXED) BlockThemes.find(appearanceStore.fixedId)
-            else themes.firstOrNull { it.id == managedThemeId } ?: BlockThemes.find(appearanceStore.fixedId)
+        val selected = if (appearanceStore.mode == BlockThemeMode.FIXED) appearanceStore.find(appearanceStore.fixedId)
+            else themes.firstOrNull { it.id == managedThemeId } ?: appearanceStore.find(appearanceStore.fixedId)
         managedThemeId = selected.id
         if (appearanceStore.mode != BlockThemeMode.FIXED) {
             divider(content, NIGHT_LINE)
-            content.addView(copyText("管理内置主题：在这里预览或删除，显示方式保持不变。", 14f, NIGHT_MUTED))
+            content.addView(copyText("主题管理：在这里查看、编辑或删除，显示方式保持不变。", 14f, NIGHT_MUTED))
         }
-        themeDropdown(if (appearanceStore.mode == BlockThemeMode.FIXED) "选择主题" else "管理内置主题",
+        themeDropdown(if (appearanceStore.mode == BlockThemeMode.FIXED) "选择主题" else "管理主题",
             themes.map { it.name }, themes.indexOf(selected).coerceAtLeast(0)) { index ->
             managedThemeId = themes[index].id
             if (appearanceStore.mode == BlockThemeMode.FIXED && !appearanceStore.setFixed(themes[index].id)) {
@@ -913,9 +928,11 @@ class MainActivity : Activity() {
             }
             render(keepScroll = true)
         }
-        if (appearanceStore.mode != BlockThemeMode.CUSTOM) {
+        val selectedAppearance = appearanceStore.resolve(selected)
+        run {
             content.addView(ImageView(this).apply {
-                setImageBitmap(BitmapFactory.decodeResource(resources, selected.artResource(),
+                if (selectedAppearance.image != null) setImageBitmap(selectedAppearance.image)
+                else setImageBitmap(BitmapFactory.decodeResource(resources, selectedAppearance.theme.artResource(),
                     BitmapFactory.Options().apply { inSampleSize = 2 }))
                 contentDescription = selected.description
                 scaleType = ImageView.ScaleType.CENTER_CROP
@@ -923,10 +940,13 @@ class MainActivity : Activity() {
             content.addView(copyText("${selected.headline} ${selected.reminder}", 15f))
         }
         content.addView(button("预览 · ${selected.name}", soft = true) { openThemePreview(selected) })
-        if (BlockThemes.canDelete(selected.id)) {
-            content.addView(button("删除这个内置主题", soft = true) { confirmThemeDeletion(selected) }
+        content.addView(copyText("按钮：${selected.closeLabel} / ${selected.homeLabel}", 14f, NIGHT_MUTED))
+        if (appearanceStore.canEdit(selected.id)) content.addView(button("编辑这个主题", soft = true) { openThemeEditor(selected) })
+        if (appearanceStore.canDelete(selected.id)) {
+            content.addView(button("删除这个主题", soft = true) { confirmThemeDeletion(selected) }
                 .apply { isEnabled = !appearanceStore.importing })
         } else content.addView(copyText("原长老始终保留，不能删除。", 14f, NIGHT_MUTED))
+        content.addView(button("新增主题", primary = true) { openThemeEditor() })
     }
 
     /** Native dropdowns keep the page height independent of the number of bundled themes. */
@@ -974,7 +994,7 @@ class MainActivity : Activity() {
     }
 
     private fun chooseRandomThemes() {
-        val themes = appearanceStore.randomThemes
+        val themes = appearanceStore.availableThemes
         val checked = BooleanArray(themes.size) { themes[it].id in appearanceStore.pool }
         val dialog = AlertDialog.Builder(this).setTitle("随机主题池")
             .setMultiChoiceItems(themes.map { it.name }.toTypedArray(), checked) { _, index, value -> checked[index] = value }
@@ -991,11 +1011,11 @@ class MainActivity : Activity() {
     }
 
     private fun confirmThemeDeletion(theme: BlockTheme) {
-        if (!BlockThemes.canDelete(theme.id)) return
+        if (!appearanceStore.canDelete(theme.id)) return
         val dialog = AlertDialog.Builder(this).setTitle("删除「${theme.name}」？")
             .setMessage("删除后，本机不再显示或随机选中此主题，保留数据升级也不会恢复。此操作无法撤销。原长老始终保留。")
             .setNegativeButton("取消", null).setPositiveButton("删除主题") { _, _ ->
-                if (appearanceStore.deleteBuiltIn(theme.id)) {
+                if (appearanceStore.deleteTheme(theme.id)) {
                     managedThemeId = appearanceStore.fixedId
                     toast("主题已删除")
                     render(keepScroll = true)
@@ -1011,23 +1031,76 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    private fun customThemeControls() {
-        content.addView(copyText("图片仅保存在本机，完整显示。请选择不超过 20 MB 的图片。", 14f, NIGHT_MUTED))
-        val custom = appearanceStore.resolve(BlockThemes.custom)
-        if (custom.image != null) {
-            content.addView(ImageView(this).apply {
-                setImageBitmap(custom.image)
-                contentDescription = "自定义禁用页图片预览"
-                scaleType = ImageView.ScaleType.FIT_CENTER
-            }, LinearLayout.LayoutParams(-1, dp(170)))
-            content.addView(button("预览自定义图片", soft = true) { openThemePreview(BlockThemes.custom) })
+    private fun openThemeEditor(theme: BlockTheme? = null) {
+        appearanceStore.discardDraft()
+        themeDraft = if (theme != null) ThemeDraft.from(theme) else {
+            var name = "我的主题"
+            var index = 2
+            while (appearanceStore.availableThemes.any { it.name == name }) name = "我的主题 ${index++}"
+            ThemeDraft(name = name)
         }
-        content.addView(button(if (appearanceStore.importing) "正在处理图片…" else if (appearanceStore.hasCustom) "更换图片" else "选择图片", soft = true) {
+        themeDirty = false
+        go(Page.THEME_EDITOR)
+    }
+
+    private fun themeEditor() {
+        content.addView(button("← 返回主题设置", soft = true) { leaveThemeEditor() })
+        content.addView(heading(if (themeDraft.id == null) "新增主题" else "编辑主题"))
+        fun field(label: String, value: String, multiline: Boolean = false, update: (String) -> Unit) {
+            content.addView(copyText(label, 15f, NIGHT_MUTED))
+            content.addView(EditText(this).apply {
+                hint = label
+                contentDescription = label
+                setTextColor(NIGHT_TEXT)
+                setHintTextColor(NIGHT_MUTED)
+                background = surface(NIGHT_PANEL, 8, NIGHT_LINE)
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                minHeight = dp(48)
+                inputType = InputType.TYPE_CLASS_TEXT or if (multiline) InputType.TYPE_TEXT_FLAG_MULTI_LINE else InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                setText(value)
+                onText { update(it); if (it != value) themeDirty = true }
+                isEnabled = !appearanceStore.importing
+            })
+        }
+        field("主题名（最多20字）", themeDraft.name) { themeDraft = themeDraft.copy(name = it) }
+        field("喝止台词（最多16字）", themeDraft.headline) { themeDraft = themeDraft.copy(headline = it) }
+        field("提醒台词（最多80字）", themeDraft.reminder, true) { themeDraft = themeDraft.copy(reminder = it) }
+        content.addView(copyText("两个按钮分别打开最近任务、返回桌面，名称可以自定义。", 14f, NIGHT_MUTED))
+        field("第一个按钮名称（最多6字）", themeDraft.closeLabel) { themeDraft = themeDraft.copy(closeLabel = it) }
+        field("第二个按钮名称（最多6字）", themeDraft.homeLabel) { themeDraft = themeDraft.copy(homeLabel = it) }
+        val picture = appearanceStore.draftImage() ?: themeDraft.id?.let { appearanceStore.resolve(appearanceStore.find(it)).image }
+        if (picture != null) content.addView(ImageView(this).apply {
+            setImageBitmap(picture)
+            contentDescription = "主题图片草稿"
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }, LinearLayout.LayoutParams(-1, dp(160)))
+        content.addView(copyText("图片仅保存在本机，不超过20 MB。保存后可用于固定或随机显示。", 14f, NIGHT_MUTED))
+        content.addView(button(if (appearanceStore.importing) "正在处理图片…" else if (picture == null) "选择图片" else "更换图片", soft = true) {
             pickThemeImage()
         }.apply { isEnabled = !appearanceStore.importing })
-        if (appearanceStore.hasCustom) content.addView(button("删除自定义图片", soft = true) {
-            if (appearanceStore.deleteImage()) render(keepScroll = true) else toast("删除失败，请重试")
+        content.addView(button("保存主题", primary = true) {
+            val draft = themeDraft.trimmed()
+            val error = draft.error()
+            if (error != null) { toast(error); return@button }
+            if (appearanceStore.availableThemes.any { it.name == draft.name && it.id != draft.id }) {
+                toast("已有同名主题，请换个名称"); return@button
+            }
+            if (picture == null) { toast("请选择主题图片"); return@button }
+            val saved = appearanceStore.savePersonal(draft)
+            if (saved == null) toast("保存失败，请重试") else {
+                themeDirty = false
+                managedThemeId = saved.id
+                go(Page.THEMES)
+            }
         }.apply { isEnabled = !appearanceStore.importing })
+    }
+
+    private fun leaveThemeEditor() {
+        fun leave() { appearanceStore.discardDraft(); themeDirty = false; go(Page.THEMES) }
+        if (!themeDirty && !appearanceStore.importing) leave()
+        else showThemeDialog(AlertDialog.Builder(this).setTitle("放弃主题修改？")
+            .setMessage("已保存的主题保持不变，当前未保存的台词、按钮名称和图片将被丢弃。")
+            .setNegativeButton("继续编辑", null).setPositiveButton("放弃修改") { _, _ -> leave() }.create())
     }
 
     private fun pickThemeImage() {
@@ -1045,10 +1118,10 @@ class MainActivity : Activity() {
     @Deprecated("Platform activity result used without an additional dependency")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != 410 || resultCode != RESULT_OK) return
+        if (requestCode != 410 || resultCode != RESULT_OK || page != Page.THEME_EDITOR) return
         val uri = data?.data ?: return
         appearanceStore.importImage(uri)
-        if (page == Page.THEMES) render(keepScroll = true)
+        if (page == Page.THEME_EDITOR) render(keepScroll = true)
     }
 
     private fun openThemePreview(theme: BlockTheme) {
@@ -1057,7 +1130,7 @@ class MainActivity : Activity() {
     }
 
     private fun themePreview() {
-        val theme = if (previewThemeId == BlockThemes.custom.id) BlockThemes.custom else BlockThemes.find(previewThemeId, appearanceStore.deletedIds)
+        val theme = appearanceStore.find(previewThemeId)
         val appearance = appearanceStore.resolve(theme)
         root.removeView(scroll)
         root.addView(button("‹ 返回主题设置 · ${appearance.theme.name}预览", soft = true) { go(Page.THEMES) })
@@ -1192,6 +1265,7 @@ class MainActivity : Activity() {
             Page.RISK_INTERCEPTION -> go(if (onboarding) Page.BACKGROUND else riskGuideOrigin)
             Page.THEMES -> go(Page.SETTINGS)
             Page.THEME_PREVIEW -> go(Page.THEMES)
+            Page.THEME_EDITOR -> leaveThemeEditor()
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null

@@ -56,6 +56,11 @@ internal object FreezeOverlayLayoutChecks {
                 overlay.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
                 overlay.layout(0, 0, w, h)
+                for (button in descendants(overlay).filterIsInstance<Button>()) {
+                    check(button.layout != null && button.layout.width <= button.width && button.layout.lineCount > 0) {
+                        "Action text has no bounded layout at ${width}x$height font=$fontScale"
+                    }
+                }
                 check(descendants(overlay).filterIsInstance<TextView>().any { it.text.toString() == deadline }) {
                     "Deadline changed during resize"
                 }
