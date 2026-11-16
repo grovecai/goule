@@ -1,6 +1,21 @@
 # Goule 验证手册
 
 
+## ColorOS 容器修复包保留数据覆盖安装（2026-11-16）
+
+沿用用户此前授权的原签名保留数据安装方式，从干净提交 `be9ff240b2c22cf2e4a0b86efd42f1ad2f3a8967` 构建 Release；10:40:29（北京时间）在 OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0 使用 `adb install --no-incremental -r` 成功覆盖安装。正式包从 `732fb56` 的 0.3.14/code 17 诊断构建更新到 0.3.15/code 18 的系统容器修复功能构建。该 APK 与现有 GitHub v0.3.15 发布资产不同，本轮未创建新发行版或替换资产。
+
+Release 构建、包名 com.goule.prototype、最低 Android 11/target 35、非 debuggable、包内源码提交与 16 KiB ZIP 对齐通过。安装前 APK 与新包证书均为原发布证书 a99c6b29…62103559；签名资料未进入工作区、日志或提交。安装后回拉 base.apk 与本地签名包摘要完全一致：`23436da63208d8e059d5d56b8b08a62c6799aad5d020a1b3c6d3484062401347`。
+
+对比安装前即时 Service 与安装后 Service，三条原戒律的 target/eligible/usedMs/remainingMs/cycleStart/blockedUntil 全部一致。红果已用 13510 ms、剩余 286490 ms（4 分 47 秒），抖音与小红书均已用 0、剩余 5 分钟；没有补算本次漏记或重启周期。appId=10445、首次安装时间 2026-11-14 12:00:57 保持。
+
+安装后系统自动重新绑定服务，Enabled/Bound 正常，Binding/Crashed 为空，connected=true、consent=true。持久历史包含新进程 version=0.3.15/18、service connected 与原有历史，journal failures=0、pendingDropped=0，诊断持续有效。未启动目标或手工启动页面、未修改权限/戒律/白名单、未强停或重启手机；覆盖安装本身导致原进程退出，由系统重新连接。
+
+修复后的持续计时、通知栏和原截止由前述 Android 15 隔离重放验证；本轮没有在正式手机人为消耗额度、制造低电量或等待 SeedlingCard 再次自然触发。真实 ColorOS 新包的低电量/通知栏/其他临时面板端到端复测仍待后续使用，不能仅凭安装成功宣称所有 SystemUI 路径均已通过。
+
+材料仅存本机 `~/.cache/goule-android/timing-recurrence-20261116/phone-install/`，含安装前后采集、原/新/回拉 APK、签名与元数据、源码记录、build-verification.json 和 installation-verification.json；Release 日志在其父目录。安装后仅补文档记录，提交前 `./scripts/check` 通过（Python 46 项、既有 JVM/Lint/Debug 与测试 APK 构建检查）；这不代表额外的真机行为回归。
+
+
 ## ColorOS 系统容器导致漏计（2026-11-16）
 
 10:29（北京时间）OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0，manufacturer=OPPO，只读采集；仍是 `732fb56` 的 0.3.14/code 17 诊断构建。持久日志和系统日志确认：10:17:26.565 电量达到 20%，.874 系统创建 SeedlingCard 窗口，.888 WindowManager 焦点仍为红果，.895 SystemUI FrameLayout/fullScreen=false/changes=0 事件让服务 .897 清空前台并取消 tick。红果直至 10:27:27 才离开；其间心跳正常、samples=6788/usedMs=13510 不变，剩余向上取整为 4 分 47 秒。当前周期未跨界、saved=true、journal failures=0，没有中途退出或存储失败证据；主线程此前一次 2066 ms 样本拒绝不足以解释持续停表。完整时间线与归因边界见 [本轮诊断](timing-recurrence-2026-11-16.md)。
