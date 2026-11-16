@@ -25,6 +25,9 @@ internal object ForegroundTimingChecks {
                 ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java).apply {
                     isAccessible = true
                 }.invoke(service, context)
+                // Pin the generic stop-path checks; the captured sequence explicitly injects OPPO below.
+                FreezeService::class.java.getDeclaredField("systemWindows").apply { isAccessible = true }
+                    .set(service, SystemWindowPolicy("Google"))
                 store = RuleStore.get(context)
                 store.approve()
                 check(store.configure(listOf(Rule(target, "计时回归", 10, 120, store.now()))))
@@ -76,6 +79,7 @@ internal object ForegroundTimingChecks {
 
             }
             investigateStopPaths(context, service, store, target, onMain)
+            replayColorOsContainer(service, store, target, onMain)
             onMain {
                 val now = store.now()
                 check(store.configure(listOf(Rule(target, "禁用回归", 10, 120, now,
@@ -169,6 +173,87 @@ internal object ForegroundTimingChecks {
                 "Persistent timing diagnostics" in history && "process start version=" in history) {
                 "Persistent trace could not explain transitions beyond the 32-event memory buffer: $history"
             }
+        }
+    }
+
+    /** 2026-11-16: shade -> target -> volume -> SeedlingCard, with no target recovery event. */
+    private fun replayColorOsContainer(service: FreezeService, store: RuleStore,
+        target: String, onMain: (() -> Unit) -> Unit,
+    ) {
+        val policyField = FreezeService::class.java.getDeclaredField("systemWindows").apply { isAccessible = true }
+        val originalPolicy = policyField.get(service)
+        val other = "fixture.independent"
+        fun configure(blocked: Boolean = false) {
+            val now = store.now()
+            check(store.configure(listOf(
+                Rule(target, "ColorOS 回归", 5, 115, now, cycleStart = now,
+                    usedMs = if (blocked) 5 * MINUTE else 0, blockedFrom = now.takeIf { blocked }),
+                Rule(other, "独立额度", 5, 115, now),
+            )))
+            FreezeService::class.java.getDeclaredField("eligible").apply { isAccessible = true }
+                .set(service, setOf(target, other))
+        }
+        fun container(changes: Int = 0, fullScreen: Boolean = false) = event(service,
+            "com.android.systemui", changes, "android.widget.FrameLayout", fullScreen)
+        try {
+            onMain {
+                policyField.set(service, SystemWindowPolicy("OPPO"))
+                configure()
+                event(service, target)
+                container(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                checkForeground(service, null)
+                container()
+                container(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, null)
+            }
+            val paused = store.rules.first().usedMs
+            SystemClock.sleep(1_200)
+            onMain {
+                check(store.rules.first().usedMs == paused) { "Shade container update resumed timing" }
+                event(service, target)
+                dialog(service)
+            }
+            val resumed = store.rules.first().usedMs
+            SystemClock.sleep(300)
+            onMain {
+                container()
+                checkForeground(service, target)
+            }
+            SystemClock.sleep(1_300)
+            onMain {
+                // No new target event: keep sampling through the passive ColorOS root update.
+                container()
+                checkForeground(service, target)
+                check(store.rules.first().usedMs >= resumed + 1_000) { "SeedlingCard stopped sampling" }
+                check(store.rules.last().usedMs == 0L) { "Other app quota changed" }
+                container(fullScreen = true)
+                checkForeground(service, null)
+                container()
+                checkForeground(service, null)
+                event(service, target)
+                event(service, "com.android.settings", className = "android.widget.FrameLayout")
+                container()
+                checkForeground(service, null)
+                event(service, target)
+                service.onInterrupt()
+                container()
+                checkForeground(service, null)
+
+                configure(blocked = true)
+                event(service, target)
+                val blocked = store.rules.first()
+                check(blocked.blockedUntil != null)
+                repeat(3) { container(); checkForeground(service, target) }
+                check(store.rules.first() == blocked) { "Passive container altered blocked quota/deadline" }
+                check(store.rules.last().usedMs == 0L)
+                container(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                container()
+                checkForeground(service, null)
+                check(store.rules.first() == blocked)
+                check("passive ColorOS system container" in dump(service, history = true))
+            }
+        } finally {
+            onMain { policyField.set(service, originalPolicy) }
         }
     }
 

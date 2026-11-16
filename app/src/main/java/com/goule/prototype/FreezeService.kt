@@ -44,6 +44,7 @@ class FreezeService : AccessibilityService() {
         }
     }
     private val recents = RecentsTransition()
+    private var systemWindows = SystemWindowPolicy(Build.MANUFACTURER)
     private val leaveAfterLauncherEvent = Runnable {
         recents.reset()
         reconcile(null, "launcher settle")
@@ -173,6 +174,14 @@ class FreezeService : AccessibilityService() {
         if (isTransientSystemDialog(name, event.className?.toString(), event.isFullScreen)) {
             observe("floating system dialog; retain target")
             reconcile(foreground, "floating system dialog")
+            return
+        }
+        // This ColorOS root update kept target focus. Notification panes use the same
+        // class, so a pane/content change must still take the normal exit path.
+        if (systemWindows.isPassiveContainerUpdate(name, event.className?.toString(),
+                event.isFullScreen, event.contentChangeTypes)) {
+            observe("passive ColorOS system container; retain target")
+            reconcile(foreground, "passive ColorOS container")
             return
         }
         handler.removeCallbacks(leaveAfterLauncherEvent)

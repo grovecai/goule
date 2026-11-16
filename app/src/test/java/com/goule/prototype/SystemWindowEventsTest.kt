@@ -29,4 +29,26 @@ class SystemWindowEventsTest {
         }
         assertFalse(isTransientSystemDialog("com.android.systemui", null, false))
     }
+
+    @Test fun colorOsRootUpdateKeepsTheUnderlyingTargetButPaneChangesDoNot() {
+        val policy = SystemWindowPolicy("OPPO")
+        assertTrue(policy.isPassiveContainerUpdate("com.android.systemui", "android.widget.FrameLayout", false, 0))
+        for (changes in listOf(1, 16, 32, 16 or 32, 64)) {
+            assertFalse(policy.isPassiveContainerUpdate("com.android.systemui", "android.widget.FrameLayout", false, changes))
+        }
+    }
+
+    @Test fun colorOsContainerExceptionDoesNotBroadenOtherWindowsOrVendors() {
+        for (manufacturer in listOf("Google", "Samsung", "OnePlus", "", "unknown")) {
+            assertFalse(SystemWindowPolicy(manufacturer).isPassiveContainerUpdate(
+                "com.android.systemui", "android.widget.FrameLayout", false, 0))
+        }
+        val policy = SystemWindowPolicy("OPPO")
+        assertFalse(policy.isPassiveContainerUpdate("com.android.systemui", "android.widget.FrameLayout", true, 0))
+        assertFalse(policy.isPassiveContainerUpdate("com.android.systemui", "android.widget.ImageView", false, 0))
+        assertFalse(policy.isPassiveContainerUpdate("com.android.systemui", null, false, 0))
+        for (name in listOf("com.android.settings", "target", null)) {
+            assertFalse(policy.isPassiveContainerUpdate(name, "android.widget.FrameLayout", false, 0))
+        }
+    }
 }

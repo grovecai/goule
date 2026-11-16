@@ -25,6 +25,7 @@ printf '%s\n' "$goule_result"
    "$goule_result" == *"PASS: usable target keeps counting"* &&
    "$goule_result" == *"PASS: floating system dialogs retain target"* &&
    "$goule_result" == *"PASS: timing stop paths and persistent diagnostics"* &&
+   "$goule_result" == *"PASS: ColorOS passive containers preserve usage"* &&
    "$goule_result" == *"PASS: onboarding visits three steps"* &&
    "$goule_result" != *"INSTRUMENTATION_FAILED"* && "$goule_result" != *"FAIL:"* ]]
 if [[ -n "${GOULE_UI_OUTPUT_DIR:-}" ]]; then

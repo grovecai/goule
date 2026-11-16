@@ -1,8 +1,10 @@
 # 斩心魔进度
 
-更新于 2026-11-15。
+更新于 2026-11-16。
 
 ## 当前状态
+
+2026-11-16 10:29（北京时间）已取得红果复发的完整持久日志：10:17:26.895，ColorOS 在电量达 20% 后创建 SeedlingCard，输入焦点仍在红果；SystemUI 非全屏 FrameLayout 的 changes=0 更新却清空前台并取消 tick，此后红果至 10:27:27 才离开，用量一直停在 13510 ms，服务心跳/绑定正常。已修复 OPPO 该精确事件组合保留当前目标，带面板变化标记的通知栏、其他 App、设置、锁屏仍暂停，空前台不被浮层恢复。原逻辑在新生产 Service 重放及纯 Kotlin 回归中均失败，修复后 `./scripts/check` 通过（Python 46 项、Debug/Release 各 50 项、Lint/构建，Android 15/API 35 模拟器八组 PASS）。未补算漏记用量；修复包原签名覆盖安装与最终 ColorOS 行为验证另记，见 [本轮证据](docs/timing-recurrence-2026-11-16.md) 与 [验证手册](docs/verification.md#coloros-系统容器导致漏计2026-11-16)。
 
 2026-11-15T14:40:35+08:00 Actions 已完成 v0.3.15/code 18 原签名自动发布及 Gitee 同步，两端附件回下载一致，README 下载已更新。自动验收见 [发布记录](docs/latest-release-verification.json)；本次 CI 不代表新的真机行为回归。
 

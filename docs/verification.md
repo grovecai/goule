@@ -1,6 +1,19 @@
 # Goule 验证手册
 
 
+## ColorOS 系统容器导致漏计（2026-11-16）
+
+10:29（北京时间）OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0，manufacturer=OPPO，只读采集；仍是 `732fb56` 的 0.3.14/code 17 诊断构建。持久日志和系统日志确认：10:17:26.565 电量达到 20%，.874 系统创建 SeedlingCard 窗口，.888 WindowManager 焦点仍为红果，.895 SystemUI FrameLayout/fullScreen=false/changes=0 事件让服务 .897 清空前台并取消 tick。红果直至 10:27:27 才离开；其间心跳正常、samples=6788/usedMs=13510 不变，剩余向上取整为 4 分 47 秒。当前周期未跨界、saved=true、journal failures=0，没有中途退出或存储失败证据；主线程此前一次 2066 ms 样本拒绝不足以解释持续停表。完整时间线与归因边界见 [本轮诊断](timing-recurrence-2026-11-16.md)。
+
+新策略仅在 OPPO + com.android.systemui + android.widget.FrameLayout + fullScreen=false + contentChangeTypes=0 保留已有目标，照常检查锁屏/权限/周期；不从空前台恢复，不扩展到其他厂商/全屏/其他类/包或带变化标记的事件。本机通知栏出现/收起使用相同类但带 changes=16/32，保留暂停逻辑；已有音量和普通 Dialog 逻辑不变。无新权限或窗口内容读取，不补算历史漏记。
+
+修复前新回归确实失败：JVM 50 项中一个精确组合检查失败；Android 15/API 35 x86_64 模拟器在生产 FreezeService 重放通知栏→目标恢复→音量→无变化标记 FrameLayout 时，前台被清空，新的持续计时断言失败。保留旧行为的策略先返回 false，再修改为上述精确组合；失败位置及状态与真实错误一致。
+
+修复后 `GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过：Python 46 项、Debug/Release 各 50 项单元测试零失败/错误/跳过，Lint、Debug 与 instrumentation APK 构建通过，Android 八组 PASS。新增生产 Service 检查覆盖同一序列后无新目标事件仍持续累计、通知栏暂停、空前台不恢复、全屏窗口/设置/中断退出、另一 App 用量独立、禁用原截止保持；既有最近任务、屏幕/锁屏、音量、页面和遮罩布局回归同时通过。OPPO 策略在隔离模拟器注入，不能称为真实 SeedlingCard 的修复后端到端验收。
+
+本轮已同步 GitHub main 的既有 v0.3.15 发布文档/版本更新，保留其历史；本次代码修复仍为后续功能构建，发布或手机覆盖安装另记。原始手机材料与修复前后检查日志只留本机 `~/.cache/goule-android/timing-recurrence-20261116/`，不提交完整系统日志。首次取证未操作手机界面、目标、权限或戒律；最终正式包安装、真实通知栏/低电量浮层自然触发及新周期行为仍需按实际结果续记。
+
+
 ## 诊断功能构建保留数据覆盖安装（2026-11-15）
 
 按用户「安装到手机」要求，从干净提交 `732fb564c6c1d93953dc1e8bb6a7a36eeaa03158` 构建 Release，沿用原 PKCS12 证书覆盖安装，保留数据。08:01:47（北京时间）OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0 安装成功，正式包从 0.3.13/code 16 更新到 0.3.14/code 17 的诊断功能构建。该 APK 包含本次持久日志，与此前 GitHub v0.3.14 发布附件不同；本轮未创建新发行版或替换发布资产。

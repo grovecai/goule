@@ -28,7 +28,7 @@
 
 ### 计时和恢复
 
-系统音量面板不会替换底层前台 App。仅对已确认的 SystemUI 弹窗类保留当前目标并重新核对交互状态和禁用到期；OPPO/ColorOS 的 `OplusVolumeDialogView$CustomDialog` 虽上报 `fullScreen=true`，仍属于透明音量面板。普通非全屏 `android.app.Dialog` 同样保留底层目标。未知系统窗口、通知栏、设置和其他 App 继续按离开处理，锁屏及断连仍清空前台，不因迟来的弹窗关闭事件恢复旧目标。不读取事件文字或窗口内容，不拦截音量键。
+系统音量面板不会替换底层前台 App。仅对已确认的 SystemUI 弹窗类保留当前目标并重新核对交互状态和禁用到期；OPPO/ColorOS 的 `OplusVolumeDialogView$CustomDialog` 虽上报 `fullScreen=true`，仍属于透明音量面板。普通非全屏 `android.app.Dialog` 同样保留底层目标。OPPO 的非全屏 `android.widget.FrameLayout` 且 contentChangeTypes=0 的 SystemUI 根容器更新，同样保留已有目标；真实记录显示 SeedlingCard 浮层出现时输入焦点仍在目标。相同类名的通知栏展开/收起携带 PANE_APPEARED/PANE_DISAPPEARED，继续按离开处理；有变化标记、全屏或其他厂商的容器不套用此例外，空前台不因容器更新恢复。其他未知系统窗口、通知栏、设置和其他 App 继续按离开处理，锁屏及断连仍清空前台，不因迟来的弹窗关闭事件恢复旧目标。不读取事件文字或窗口内容，不拦截音量键。
 
 1. 从已确认的前台事件开启会话，短周期检查交互状态和锁屏。仅累计短间隔的 `uptimeMillis` 增量，并用 `elapsedRealtime` 排除跨休眠采样。屏幕状态变化时丢弃尚未确认的区间，等新的窗口事件再继续。
 2. 达到当前周期额度时，用一次事务保存累计量和禁用开始，再展示遮罩。截止为当前周期结束时间，不通过重复打开重新开始。跨周期采样按边界拆分；不补算已被遮罩覆盖的区间。
