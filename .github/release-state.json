@@ -1,23 +1,18 @@
 {
   "schema": 1,
-  "tag": "v0.3.15",
-  "version": "0.3.15",
-  "version_code": 18,
-  "previous_tag": "v0.3.14",
-  "source_commit": "e6b7c46de1c55b9522f8faadd63a369af644324c",
+  "tag": "v0.3.16",
+  "version": "0.3.16",
+  "version_code": 19,
+  "previous_tag": "v0.3.15",
+  "source_commit": "d173f216e817dd836141aeaa6ce49ff92ed0aabc",
   "prerelease": true,
-  "complete": true,
+  "complete": false,
   "changed_files": [
     "app/src/androidTest/java/com/goule/prototype/ForegroundTimingChecks.kt",
     "app/src/androidTest/java/com/goule/prototype/PageRefreshInstrumentation.kt",
     "app/src/main/java/com/goule/prototype/FreezeService.kt",
-    "app/src/main/java/com/goule/prototype/MainActivity.kt",
-    "app/src/main/java/com/goule/prototype/RollingDiagnosticLog.kt",
-    "app/src/main/java/com/goule/prototype/RuleStore.kt",
-    "app/src/main/java/com/goule/prototype/TimingDiagnostics.kt",
-    "app/src/test/java/com/goule/prototype/RollingDiagnosticLogTest.kt",
-    "scripts/check-ui",
-    "scripts/collect_timing_diagnostics.py",
-    "scripts/test_collect_timing_diagnostics.py"
+    "app/src/main/java/com/goule/prototype/SystemWindowEvents.kt",
+    "app/src/test/java/com/goule/prototype/SystemWindowEventsTest.kt",
+    "scripts/check-ui"
   ]
 }
