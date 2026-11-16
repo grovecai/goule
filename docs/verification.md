@@ -1,5 +1,18 @@
 # Goule 验证手册
 
+## 多主题功能构建保留数据覆盖安装（2026-11-16）
+
+按用户「安装到手机，保留现有戒律和数据」要求，从干净提交 `6de2e4e7ed0554a9b16cff10684cb91afd3c309a` 构建 Release，22:51:21（北京时间）在 OPPO PLJ110、Android 16/API 36、ColorOS V16.1.0 使用 `adb install --no-incremental -r` 成功覆盖安装。手机从 0.3.15/code 18 更新至多主题功能构建 0.3.16/code 19；该包不同于此前 GitHub v0.3.16 发布附件，本轮未新建发行版或替换资产。
+
+Release 构建、原发布签名证书（SHA-256 a99c6b29…62103559）、包名 com.goule.prototype、最低 Android 11/target 35、非调试标记、包内源码提交及 16 KiB ZIP 对齐通过。手机原 APK 与新包证书一致；安装后回拉 base.apk 与本地签名包 SHA-256 完全一致：`9bdb0eee04c0478bf58dba9bf19d9922f44df59ce4178dc6e05a6c3696d504ee`。签名资料仅在本机私有目录使用，未进入工作区或日志。
+
+安装前即时 Service 与安装后 Service 的三条 target/eligible/usedMs/remainingMs/cycleStart/blockedUntil 逐项完全相同。抖音、红果各已用 0、剩余 5 分钟；小红书已用 300000 ms、剩余 0，仍禁用至当天 23:29:52.852。三条配置及当前周期快照均保持可刷 5 分钟/休息 115 分钟，未重置用量或周期。appId=10445、首次安装时间 2026-11-14 12:00:57 保持；未卸载或清除数据。
+
+系统自动重新连接无障碍服务，Enabled/Bound 正常、Binding/Crashed 为空，connected=true、consent=true，journal failures=0。随后启动本应用 MainActivity，`am start -W` 返回 Status: ok，服务仍保持连接。未打开目标 App、消耗额度、改戒律/主题或开关权限。用户可从「设置 → 禁用页主题」自行体验。
+
+这次验证覆盖原签名安装、数据/安装身份保留、启动和实际服务绑定；OPPO 真实主题选择、系统图片选择/取消、物理旋转、自然用满/到期与面板往返仍待体验，不以安装成功代替完整功能验收。材料仅存本机 `~/.cache/goule-android/block-themes-20261116/phone-install/`，包括安装前后状态、原/新/回拉 APK、build-verification.json、installation-verification.json；Release 构建日志在其父目录。安装后仅补充文档，提交前执行 `./scripts/check`。
+
+
 ## 多主题禁用页（2026-11-16）
 
 范围为设置中的固定主题、可排除场景的随机主题池、自定义本机图片及复用真实布局的预览。保留原长老，新增十张紫金漫画插画及对应台词，资源与完整生成提示词见 [主题说明](block-themes.md) 和 [提示词清单](block-theme-prompts.json)。只改变外观，不写规则配置、已用量、周期或禁用截止。
