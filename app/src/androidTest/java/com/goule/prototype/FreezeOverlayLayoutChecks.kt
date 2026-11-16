@@ -19,7 +19,7 @@ import java.io.File
 
 /** Exercises Android measurement, safe padding, resizing and touch dispatch on the production view. */
 internal object FreezeOverlayLayoutChecks {
-    fun run(context: Context) {
+    fun run(context: Context, appearance: BlockAppearance = BlockAppearance(BlockThemes.default), writeScreenshots: Boolean = true) {
         for (fontScale in listOf(1f, 1.3f, 2f)) {
             val configured = context.createConfigurationContext(Configuration(context.resources.configuration).apply {
                 this.fontScale = fontScale
@@ -28,7 +28,7 @@ internal object FreezeOverlayLayoutChecks {
             var homeCount = 0
             val deadline = "11月14日 下午11:59"
             val overlay = FreezeOverlayView(configured, "这是一个用于检查换行的很长很长的目标应用名称", deadline,
-                onCloseTarget = { closeCount++ }, onGoHome = { homeCount++ })
+                onCloseTarget = { closeCount++ }, onGoHome = { homeCount++ }, appearance = appearance)
             // Resizing the same overlay must switch both ways without a new service window.
             for ((width, height) in listOf(360 to 640, 640 to 320, 800 to 360, 640 to 240, 360 to 640, 640 to 320)) {
                 val bars = Insets.of(0, configured.dp(24), 0, configured.dp(24))
@@ -66,7 +66,7 @@ internal object FreezeOverlayLayoutChecks {
                         "Overlay background leaks at ($x,$y) in ${width}x$height"
                     }
                 }
-                if (width == 640 && height == 320 || width == 360 && height == 640) {
+                if (writeScreenshots && (width == 640 && height == 320 || width == 360 && height == 640)) {
                     File(context.getExternalFilesDir(null), "overlay-${width}x$height-$fontScale.png").outputStream().use {
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                     }

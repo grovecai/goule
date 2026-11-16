@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider android:name="com.goule.prototype.ThemeImageFixtureProvider"
+            android:authorities="com.goule.uiverify.images" android:exported="true" />
+    </application>
+</manifest>

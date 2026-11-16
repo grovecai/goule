@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.BitmapFactory
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.net.Uri
@@ -28,6 +29,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -39,10 +41,12 @@ import java.io.FileDescriptor
 import java.io.PrintWriter
 
 class MainActivity : Activity() {
-    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION }
+    private enum class Page { WELCOME, PERMISSION, RULES, SETTINGS, PICKER, FORM, DETAIL, REMOVE, DISCARD, HELP, BACKGROUND, RISK_INTERCEPTION, THEMES, THEME_PREVIEW }
     private val connectionState = ServiceConnectionState()
 
     private val store by lazy { RuleStore.get(this) }
+    private val appearanceStore by lazy { BlockAppearanceStore.get(this) }
+    private var previewThemeId = BlockThemes.default.id
     private val handler = Handler(Looper.getMainLooper())
     private var onboarding = false
     private var showSetupHelp = false
@@ -98,6 +102,7 @@ class MainActivity : Activity() {
             dirty = it.getBoolean("dirty")
             query = it.getString("query", "")
             awaitingFirstConnection = it.getBoolean("awaiting")
+            previewThemeId = it.getString("previewTheme", BlockThemes.default.id)
         }
         if (Build.VERSION.SDK_INT >= 33) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(0) { back() }
@@ -127,11 +132,14 @@ class MainActivity : Activity() {
         outState.putBoolean("dirty", dirty)
         outState.putString("query", query)
         outState.putBoolean("awaiting", awaitingFirstConnection)
+        outState.putString("previewTheme", previewThemeId)
         super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
         super.onResume()
+        appearanceStore.onImportFinished = { updateThemeImport() }
+        updateThemeImport()
         val freshTargets = eligibleTargets()
         val changed = freshTargets != targets
         targets = freshTargets
@@ -140,6 +148,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        appearanceStore.onImportFinished = null
         handler.removeCallbacks(refresh)
         super.onPause()
     }
@@ -254,6 +263,8 @@ class MainActivity : Activity() {
             Page.HELP -> help()
             Page.BACKGROUND -> backgroundSettings()
             Page.RISK_INTERCEPTION -> riskInterceptionSettings()
+            Page.THEMES -> themes()
+            Page.THEME_PREVIEW -> themePreview()
         }
         if (page == Page.RULES || page == Page.SETTINGS) bottomNavigation()
         visibleSignature = signature()
@@ -839,12 +850,135 @@ class MainActivity : Activity() {
                 })
             }
             divider(this, NIGHT_LINE)
+            addView(heading("禁用页主题", 18f))
+            addView(copyText(appearanceStore.summary, 15f, NIGHT_MUTED))
+            addView(button("选择禁用页主题", primary = true) { go(Page.THEMES) })
+            divider(this, NIGHT_LINE)
             addView(heading("戒律保护", 18f).apply {
                 setPadding(0, dp(6), 0, 0)
             })
             addView(policyText("修改：每条戒律两次修改至少间隔 5 分钟。", "5 分钟"))
             addView(policyText("移除：创建后要等 1 小时。每次开始禁用时，重新等 1 小时。", "1 小时"))
         })
+    }
+
+    private fun updateThemeImport() {
+        appearanceStore.takeImportMessage()?.let { toast(it) }
+        if (page == Page.THEMES) render(keepScroll = true)
+    }
+
+    private fun themes() {
+        content.addView(button("← 返回设置", soft = true) { go(Page.SETTINGS) })
+        content.addView(heading("禁用页主题"))
+        content.addView(copyText("换一种方式，叫醒刷上头的自己。所有戒律共用此设置，下次显示禁用页时生效。", 15f, NIGHT_MUTED))
+        for (mode in BlockThemeMode.entries) {
+            val selected = appearanceStore.mode == mode
+            content.addView(button("${if (selected) "●" else "○"} ${mode.label}", primary = selected, soft = !selected) {
+                if (mode == BlockThemeMode.CUSTOM && !appearanceStore.hasCustom) pickThemeImage()
+                else if (appearanceStore.setMode(mode)) render(keepScroll = true)
+                else toast("保存失败，请重试")
+            }.apply { isEnabled = !appearanceStore.importing })
+        }
+        when (appearanceStore.mode) {
+            BlockThemeMode.FIXED -> content.addView(copyText("选择一个主题固定显示，点击预览可以查看完整禁用页。", 14f, NIGHT_MUTED))
+            BlockThemeMode.RANDOM -> content.addView(copyText("每次进入禁用页，从勾选的主题中随机抽取。至少保留一个；停留和旋转屏幕时不会换图。", 14f, NIGHT_MUTED))
+            BlockThemeMode.CUSTOM -> Unit
+        }
+        if (appearanceStore.mode != BlockThemeMode.CUSTOM) {
+            for (theme in BlockThemes.all) {
+                divider(content, NIGHT_LINE)
+                content.addView(ImageView(this).apply {
+                    setImageBitmap(BitmapFactory.decodeResource(resources, theme.artResource(),
+                        BitmapFactory.Options().apply { inSampleSize = 2 }))
+                    contentDescription = theme.description
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                }, LinearLayout.LayoutParams(-1, dp(155)))
+                content.addView(heading(theme.name, 20f))
+                content.addView(copyText("${theme.headline} ${theme.reminder}", 15f))
+                if (appearanceStore.mode == BlockThemeMode.RANDOM) {
+                    content.addView(CheckBox(this).apply {
+                        text = "加入随机 · ${theme.name}"
+                        setTextColor(NIGHT_TEXT)
+                        buttonTintList = ColorStateList.valueOf(NIGHT_GOLD)
+                        minHeight = dp(48)
+                        isChecked = theme.id in appearanceStore.pool
+                        isEnabled = !appearanceStore.importing
+                        setOnCheckedChangeListener { _, checked ->
+                            val ids = appearanceStore.pool.toMutableSet()
+                            if (checked) ids.add(theme.id) else ids.remove(theme.id)
+                            if (!appearanceStore.setPool(ids)) {
+                                isChecked = theme.id in appearanceStore.pool
+                                toast(if (ids.isEmpty()) "至少保留一个随机主题" else "保存失败，请重试")
+                            }
+                        }
+                    })
+                } else {
+                    val selected = appearanceStore.fixedId == theme.id
+                    content.addView(button(if (selected) "已选用" else "固定使用这个主题", primary = selected, soft = !selected) {
+                        if (appearanceStore.setFixed(theme.id)) render(keepScroll = true)
+                        else toast("保存失败，请重试")
+                    }.apply { isEnabled = !appearanceStore.importing && !selected })
+                }
+                content.addView(button("预览 · ${theme.name}", soft = true) { openThemePreview(theme) })
+            }
+        }
+        divider(content, NIGHT_LINE)
+        content.addView(heading("自己的提醒", 20f))
+        content.addView(copyText("选择一张图片作为禁用页插画，喝止台词、解禁时刻和退出按钮始终保留。图片仅保存在本机，完整显示。请选择不超过 20 MB 的图片。", 14f, NIGHT_MUTED))
+        if (appearanceStore.hasCustom) {
+            val custom = appearanceStore.resolve(BlockThemes.custom)
+            content.addView(ImageView(this).apply {
+                if (custom.image != null) setImageBitmap(custom.image) else setImageResource(custom.theme.artResource())
+                contentDescription = "自定义禁用页图片预览"
+                adjustViewBounds = true
+                maxHeight = dp(240)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }, LinearLayout.LayoutParams(-1, dp(200)))
+            content.addView(button("预览自定义图片", soft = true) { openThemePreview(BlockThemes.custom) })
+            content.addView(button("删除自定义图片", soft = true) {
+                if (appearanceStore.deleteImage()) render(keepScroll = true) else toast("删除失败，请重试")
+            }.apply { isEnabled = !appearanceStore.importing })
+        }
+        content.addView(button(if (appearanceStore.importing) "正在处理图片…" else if (appearanceStore.hasCustom) "更换图片" else "选择图片", soft = true) {
+            pickThemeImage()
+        }.apply { isEnabled = !appearanceStore.importing })
+        content.addView(button("返回设置", primary = true) { go(Page.SETTINGS) })
+    }
+
+    private fun pickThemeImage() {
+        if (appearanceStore.importing) return
+        runCatching {
+            @Suppress("DEPRECATION")
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "image/*"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, 410)
+        }.onFailure { toast("无法打开图片选择器，请检查系统文件应用") }
+    }
+
+    @Deprecated("Platform activity result used without an additional dependency")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 410 || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        appearanceStore.importImage(uri)
+        if (page == Page.THEMES) render(keepScroll = true)
+    }
+
+    private fun openThemePreview(theme: BlockTheme) {
+        previewThemeId = theme.id
+        go(Page.THEME_PREVIEW)
+    }
+
+    private fun themePreview() {
+        val theme = if (previewThemeId == BlockThemes.custom.id) BlockThemes.custom else BlockThemes.find(previewThemeId)
+        val appearance = appearanceStore.resolve(theme)
+        root.removeView(scroll)
+        root.addView(button("‹ 返回主题设置 · ${appearance.theme.name}预览", soft = true) { go(Page.THEMES) })
+        root.addView(FreezeOverlayView(this, "示例 App", "预览 · 14:50",
+            onCloseTarget = { go(Page.THEMES) }, onGoHome = { go(Page.THEMES) },
+            appearance = appearance, applySafeInsets = false), LinearLayout.LayoutParams(-1, 0, 1f))
     }
 
     private fun backgroundSettings() {
@@ -971,6 +1105,8 @@ class MainActivity : Activity() {
             Page.HELP -> go(helpOrigin)
             Page.BACKGROUND -> if (onboarding) go(Page.PERMISSION) else go(Page.SETTINGS)
             Page.RISK_INTERCEPTION -> go(if (onboarding) Page.BACKGROUND else riskGuideOrigin)
+            Page.THEMES -> go(Page.SETTINGS)
+            Page.THEME_PREVIEW -> go(Page.THEMES)
             Page.PICKER -> {
                 if (replacingId != null) targetId = replacingId
                 replacingId = null

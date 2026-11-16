@@ -5,9 +5,11 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import android.view.WindowManager
 import java.io.FileDescriptor
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.lang.reflect.Proxy
 
 /** Replays the OPPO return sequence through the production service in the disposable app. */
 internal object ForegroundTimingChecks {
@@ -22,9 +24,21 @@ internal object ForegroundTimingChecks {
         var attached = false
         try {
             onMain {
+                // This is an event replay, not a system-bound AccessibilityService. Capture window
+                // attachment locally so its real show/hide/key logic can be checked without a token.
+                val actualWindows = context.getSystemService(WindowManager::class.java)
+                val replayWindows = Proxy.newProxyInstance(WindowManager::class.java.classLoader,
+                    arrayOf(WindowManager::class.java)) { _, method, args ->
+                    when (method.name) {
+                        "addView", "removeView", "removeViewImmediate", "updateViewLayout" -> null
+                        else -> method.invoke(actualWindows, *(args ?: emptyArray()))
+                    }
+                } as WindowManager
                 ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java).apply {
                     isAccessible = true
                 }.invoke(service, context)
+                FreezeService::class.java.getDeclaredField("windows\$delegate").apply { isAccessible = true }
+                    .set(service, lazyOf(replayWindows))
                 // Pin the generic stop-path checks; the captured sequence explicitly injects OPPO below.
                 FreezeService::class.java.getDeclaredField("systemWindows").apply { isAccessible = true }
                     .set(service, SystemWindowPolicy("Google"))
@@ -86,10 +100,17 @@ internal object ForegroundTimingChecks {
                     cycleStart = now, usedMs = 10 * MINUTE, blockedFrom = now))))
                 FreezeService::class.java.getDeclaredField("eligible").apply { isAccessible = true }
                     .set(service, setOf(target))
+                val appearance = BlockAppearanceStore.get(context)
+                check(appearance.setMode(BlockThemeMode.RANDOM))
+                check(appearance.setPool(setOf("kitchen")))
                 event(service, target)
+                checkOverlayTheme(service, "kitchen")
+                // A preference change or repeated tick must not replace an attached theme/deadline.
+                check(appearance.setFixed("garden"))
                 val blocked = store.rules.single()
                 repeat(4) {
                     dialog(service)
+                    checkOverlayTheme(service, "kitchen")
                     checkForeground(service, target)
                     check(store.rules.single() == blocked) { "Volume dialog changed blocked usage/deadline" }
                 }
@@ -101,6 +122,7 @@ internal object ForegroundTimingChecks {
 
                 // Screen changes clear the foreground before late dialog dismissal events arrive.
                 event(service, target)
+                checkOverlayTheme(service, "garden")
                 val receiver = FreezeService::class.java.getDeclaredField("screenReceiver").apply {
                     isAccessible = true
                 }.get(service) as android.content.BroadcastReceiver
@@ -110,8 +132,19 @@ internal object ForegroundTimingChecks {
                 check(store.rules.single() == blocked)
             }
         } finally {
-            if (attached) onMain { service.onDestroy() }
+            if (attached) onMain {
+                service.onDestroy()
+                BlockAppearanceStore.get(context).setFixed("elder")
+            }
         }
+    }
+
+    private fun checkOverlayTheme(service: FreezeService, id: String) {
+        val view = FreezeService::class.java.getDeclaredField("overlay").apply { isAccessible = true }
+            .get(service) as FreezeOverlayView
+        val appearance = FreezeOverlayView::class.java.getDeclaredField("appearance").apply { isAccessible = true }
+            .get(view) as BlockAppearance
+        check(appearance.theme.id == id) { "Service overlay did not keep the expected theme $id" }
     }
 
     /** These are candidate mechanisms, not a claim that ColorOS emitted them in the lost trace. */

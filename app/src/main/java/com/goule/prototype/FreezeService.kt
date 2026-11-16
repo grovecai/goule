@@ -296,6 +296,7 @@ class FreezeService : AccessibilityService() {
                 if (performGlobalAction(GLOBAL_ACTION_HOME)) clearForeground("overlay home")
                 else Toast.makeText(this, R.string.home_failed, Toast.LENGTH_SHORT).show()
             },
+            appearance = BlockAppearanceStore.get(this).resolve(),
         )
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,

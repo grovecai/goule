@@ -77,6 +77,7 @@ class PageRefreshInstrumentation : Instrumentation() {
             onMain { activity.finish() }
             waitForIdleSync()
             OnboardingFlowChecks.run(this)
+            BlockThemeChecks.run(this)
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
                 "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
                 "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
@@ -84,7 +85,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                 "PASS: floating system dialogs retain target timing/deadline and respect shade/settings/screen exits\n" +
                 "PASS: timing stop paths and persistent diagnostics explain rotation/window/screen/stale/stall scenarios\n" +
                 "PASS: ColorOS passive containers preserve usage and deadline while shade/settings/interrupt still pause\n" +
-                "PASS: onboarding visits three steps in order and resumes before completion\n")
+                "PASS: onboarding visits three steps in order and resumes before completion\n" +
+                "PASS: block themes select persist preview and import images with safe failure recovery\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

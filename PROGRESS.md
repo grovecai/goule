@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-16 已完成多主题禁用页：保留原戒律长老，新增十个场景插画与台词；设置支持固定、可勾选主题池的随机模式、自定义本机图片与全屏预览。图片后台限量导入、替换/取消/失败保留及删除回退，外观设置不改戒律用量、周期或截止。`GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过（Python 46 项、Debug/Release 各 56 项、Lint/构建、Android 15/API 35 九组 PASS），覆盖全部主题的横竖屏/大字号、安全边距、退出动作和预览真实重建。未安装正式手机或发布，OPPO 图片选择往返、真实用满/旋转/到期等仍待真机验证；本轮已合入既有 v0.3.16 自动发布记录，新主题不在其旧附件中。详见 [主题与台词](docs/block-themes.md) 与 [实际验证](docs/verification.md#多主题禁用页2026-11-16)。
+
 2026-11-16T14:36:15+08:00 Actions 已完成 v0.3.16/code 19 原签名自动发布及 Gitee 同步，两端附件回下载一致，README 下载已更新。自动验收见 [发布记录](docs/latest-release-verification.json)；本次 CI 不代表新的真机行为回归。
 
 2026-11-16 10:40:29（北京时间）已将 `be9ff24` 原签名修复构建覆盖安装到 OPPO PLJ110（Android 16、ColorOS V16.1.0），0.3.15/code 18；该功能包不同于已有 GitHub v0.3.15 资产，本轮未新建发行版。Release 构建、源码/版本/原证书/对齐与回拉 APK 摘要核对通过。三条戒律的 usedMs/remainingMs/cycleStart/blockedUntil/eligible 逐项完全一致，红果仍为 13510/286490 ms；appId 与首次安装时间保持。Enabled/Bound 正常、Binding/Crashed 为空，journal failures=0，未开关权限、修改戒律或补算历史用量。修复后真实 SeedlingCard 自然触发仍待观察，不将安装与事件重放等同真机全路径修复验收，见 [安装记录](docs/verification.md#coloros-容器修复包保留数据覆盖安装2026-11-16)。

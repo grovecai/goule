@@ -22,6 +22,8 @@ internal class FreezeOverlayView(
     private val deadline: String,
     private val onCloseTarget: () -> Unit,
     private val onGoHome: () -> Unit,
+    private val appearance: BlockAppearance = BlockAppearance(BlockThemes.default),
+    applySafeInsets: Boolean = true,
 ) : FrameLayout(context) {
     private val paper = Color.rgb(255, 240, 220)
     private val backdrop = Color.rgb(32, 17, 37)
@@ -33,7 +35,7 @@ internal class FreezeOverlayView(
     init {
         isClickable = true
         setBackgroundColor(backdrop)
-        setOnApplyWindowInsetsListener { _, insets ->
+        if (applySafeInsets) setOnApplyWindowInsetsListener { _, insets ->
             val safe = insets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or
                 WindowInsets.Type.displayCutout() or WindowInsets.Type.mandatorySystemGestures())
             setPadding(safe.left, safe.top, safe.right, safe.bottom)
@@ -67,10 +69,11 @@ internal class FreezeOverlayView(
     }
 
     private fun art(crop: Boolean) = ImageView(context).apply {
-        setImageResource(R.drawable.discipline_elder)
-        contentDescription = "戒律长老怒视前方，指向屏幕大声喝止"
-        adjustViewBounds = !crop
-        scaleType = if (crop) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
+        if (appearance.image != null) setImageBitmap(appearance.image)
+        else setImageResource(appearance.theme.artResource())
+        contentDescription = appearance.theme.description
+        adjustViewBounds = !crop && appearance.image == null
+        scaleType = if (crop && appearance.image == null) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
     }
 
     private fun speech(widthDp: Int, compact: Boolean): View {
@@ -81,7 +84,7 @@ internal class FreezeOverlayView(
         }
         val headline = if (compact) 34f else ((widthDp - 56) * .19f).coerceIn(40f, 64f)
         val appLine = if (compact) 22f else ((widthDp - 56) * .095f).coerceIn(20f, 33f)
-        dialogue.addView(context.copyText("够了！", headline, Color.rgb(172, 48, 32), true).apply {
+        dialogue.addView(context.copyText(appearance.theme.headline, headline, Color.rgb(172, 48, 32), true).apply {
             isAccessibilityHeading = true
             letterSpacing = -.055f
         })
@@ -94,7 +97,7 @@ internal class FreezeOverlayView(
             letterSpacing = -.055f
             setLineSpacing(0f, 1.13f)
         })
-        dialogue.addView(context.copyText("再刷下去，你还飞不飞升了？", if (compact) 16f else 18f, outline, true).apply {
+        dialogue.addView(context.copyText(appearance.theme.reminder, if (compact) 16f else 18f, outline, true).apply {
             setPadding(0, context.dp(if (compact) 4 else 8), 0, 0)
         })
         return FrameLayout(context).apply {
@@ -173,7 +176,11 @@ internal class FreezeOverlayView(
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     gravity = Gravity.CENTER_VERTICAL
-                    addView(art(short), LinearLayout.LayoutParams(-1, if (short) (height * .30f).toInt() else -2))
+                    addView(art(short), LinearLayout.LayoutParams(-1, when {
+                        appearance.image != null -> (height * .35f).toInt()
+                        short -> (height * .30f).toInt()
+                        else -> -2
+                    }))
                     addView(speech(widthDp, compact = false), LinearLayout.LayoutParams(-1, -2).apply {
                         marginStart = context.dp(12)
                         marginEnd = context.dp(12)
