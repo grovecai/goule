@@ -8,7 +8,9 @@
 
 新增兼容夹具覆盖 baby/magic/garden/marriage/sunlight/craving 在旧版与已统一存储下的固定项、单项随机池与陈旧预览全部回到长老，随机模式保持。混合池仅过滤退休项，保留 kitchen 与个人主题；已删除 work 仍不出现，个人元数据/原图可读取并可固定选择。全部有效主题继续通过多字号/横竖屏/安全区、按钮边界/回调和现有编辑/导入/删除回归；RuleStore 仍保持原配置。
 
-已人工核对 `unified-theme-page.png` 的双下拉、图片/台词和操作区；共13张渲染图与完整检查日志仅存本机 `~/.cache/goule-android/five-themes-20261117/`。隔离包已卸载，模拟器已停止。未检测到正式 OPPO 手机，未执行正式覆盖安装或发布，未改正式戒律、主题、图片或权限；原签名包构建和包内资源核对结果另补。
+已人工核对 `unified-theme-page.png` 的双下拉、图片/台词和操作区；共13张渲染图与完整检查日志仅存本机 `~/.cache/goule-android/five-themes-20261117/`。隔离包已卸载，模拟器已停止。未检测到正式 OPPO 手机，未执行正式覆盖安装或发布，未改正式戒律、主题、图片或权限；原签名 Release 已从干净提交 `588b65c92f259652dfb0b91c5cf7a21b8a7188b5` 构建并准备，仍为 0.3.16/code 19 的未发布功能包。包名、版本、最低 Android 11、非调试标记、包内源码、原证书与16 KiB ZIP 对齐核对通过，原证书与此前手机回拉 APK 一致。aapt 核对保留 discipline_elder/block_kitchen/block_work/block_exam/block_rescue，且不存在 block_magic/block_garden/block_marriage/block_sunlight/block_craving/block_baby 资源。
+
+APK SHA-256：`e33378af8fe79a0d7b5d6a990bb5d9385ff830241a92ad21652b545c25fbae72`；本机文件 `~/.cache/goule-android/five-themes-20261117/prepared-release/goule-five-themes-588b65c.apk`，旁有 build-verification.json。签名资料未进入工作区、提交或日志。本包不同于已有 GitHub v0.3.16 发行附件；再次检查 ADB 无正式手机，未执行安装、卸载或清数据。
 
 
 ## 统一主题功能包保留数据安装（2026-11-17）
