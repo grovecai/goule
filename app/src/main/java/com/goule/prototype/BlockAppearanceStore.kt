@@ -37,6 +37,8 @@ internal class BlockAppearanceStore private constructor(private val context: Con
     private val cache = object : LruCache<String, Bitmap>(16 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
     }
+    fun releaseImageCache() = cache.evictAll()
+    internal fun retainedImageBytes() = cache.size()
     private var generation = 0
     var importing = false
         private set
@@ -231,6 +233,7 @@ internal class BlockAppearanceStore private constructor(private val context: Con
     companion object {
         @SuppressLint("StaticFieldLeak")
         @Volatile private var instance: BlockAppearanceStore? = null
+        fun trimCache() { instance?.releaseImageCache() }
         fun get(context: Context): BlockAppearanceStore = instance ?: synchronized(this) {
             instance ?: BlockAppearanceStore(context.applicationContext).also { instance = it }
         }

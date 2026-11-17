@@ -1,7 +1,7 @@
 package com.goule.prototype
 
 import android.content.Context
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
@@ -45,17 +45,20 @@ internal fun nightSurface() = GradientDrawable(
 )
 
 internal class IllustratedBackdrop(context: Context, private val welcome: Boolean) : Drawable() {
-    private val bitmap = BitmapFactory.decodeResource(
-        context.resources, if (welcome) R.drawable.welcome_composed else R.drawable.rules_sword,
-    )
+    private val resources = context.resources
+    private var bitmap: Bitmap? = null
     private val image = Paint(Paint.FILTER_BITMAP_FLAG)
     private val shade = Paint()
 
     override fun onBoundsChange(bounds: Rect) {
-        if (welcome) return
         val width = bounds.width().toFloat()
         val height = bounds.height().toFloat()
         if (width <= 0f || height <= 0f) return
+        val bitmap = BackdropImages.load(resources,
+            if (welcome) R.drawable.welcome_composed else R.drawable.rules_sword,
+            bounds.width(), if (welcome) bounds.height() else 1)
+        this.bitmap = bitmap
+        if (welcome) return
         val widthScale = width / bitmap.width
         val coverScale = maxOf(widthScale, height / bitmap.height)
         val baseScale = if (welcome) coverScale else widthScale
@@ -74,7 +77,7 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
     }
 
     private fun artShader(scale: Float, left: Float, top: Float) =
-        BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+        BitmapShader(checkNotNull(bitmap), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
             setLocalMatrix(Matrix().apply {
                 setScale(scale, scale)
                 postTranslate(left, top)
@@ -82,6 +85,7 @@ internal class IllustratedBackdrop(context: Context, private val welcome: Boolea
         }
 
     override fun draw(canvas: Canvas) {
+        val bitmap = bitmap ?: return
         if (welcome) {
             canvas.drawBitmap(bitmap, null, bounds, image)
             return

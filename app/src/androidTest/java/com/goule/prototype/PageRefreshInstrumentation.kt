@@ -12,8 +12,10 @@ import android.widget.TextView
 
 /** Runs only in a disposable application ID; never writes the installed user's rule store. */
 class PageRefreshInstrumentation : Instrumentation() {
+    private var healthMemoryOnly = false
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        healthMemoryOnly = arguments?.getString("healthMemoryOnly") == "true"
         start()
     }
 
@@ -23,6 +25,12 @@ class PageRefreshInstrumentation : Instrumentation() {
         try {
             val context = targetContext
             check(context.packageName == "com.goule.uiverify") { "UI regression requires the isolated app ID" }
+            if (healthMemoryOnly) {
+                ServiceHealthMemoryChecks.run(this)
+                result.putString("stream", "PASS: service interruption evidence persists and background images release and reload safely\n")
+                finish(Activity.RESULT_OK, result)
+                return
+            }
             onMain { FreezeOverlayLayoutChecks.run(context) }
             val now = System.currentTimeMillis()
             val listReset = now + 12_000
@@ -80,6 +88,7 @@ class PageRefreshInstrumentation : Instrumentation() {
             ThemeMigrationChecks.run(this)
             BlockThemeChecks.run(this)
             ThemeManagementChecks.run(this)
+            ServiceHealthMemoryChecks.run(this)
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +
                 "PASS: overlay landscape actions stay visible and clickable through resizing and large fonts\n" +
                 "PASS: overlay edge background and stable system/cutout/gesture insets\n" +
@@ -90,7 +99,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                 "PASS: onboarding visits three steps in order and resumes before completion\n" +
                 "PASS: block themes select persist preview and import images with safe failure recovery\n" +
                 "PASS: theme dropdowns protect elder and persist deletions across every selection path\n" +
-                "PASS: unified theme content and legacy picture migration preserve fixed and random choices\n")
+                "PASS: unified theme content and legacy picture migration preserve fixed and random choices\n" +
+                "PASS: service interruption evidence persists and background images release and reload safely\n")
             finish(Activity.RESULT_OK, result)
         } catch (error: Throwable) {
             result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

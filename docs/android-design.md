@@ -43,6 +43,12 @@
 
 通过 ADB 的 Service `dump --history` 导出；服务断开时，用户打开主界面后可从 Activity `dump --history` 读取此前日志。具体证据、候选机制与采集流程见 [红果漏计排查](timing-diagnosis-2026-11-15.md)。该诊断不改变前台判定或计时策略，不能将可模拟的停止路径当作已确认的真机根因。
 
+2026-11-18 补充：独立的本机服务观测保存连接进程、最近连接/心跳及首次断开回调时间，沿用已有 30 秒心跳，不增加唤醒或轮询。进程启动时在诊断工作线程读取本包主进程退出历史，记录标准原因、时间及最多 240 字的系统原始说明。恢复页将服务观测与进程退出分开展示：只有进程标识及时间顺序符合且没有先收到断开回调，才标为“服务所在进程退出”；旧退出、更新安装和无连接观测不能直接归因本次中断。恢复后隐藏故障记录，历史缺失或读取失败明确显示未知，不解释厂商私有数字，不改规则时钟或补算用量。
+
+### 图片内存管理
+
+欢迎/戒律背景按实际绘制尺寸选择二次幂采样，只共享只读位图，Drawable 的边界和 Shader 各自独立，共享缓存最多 8 MiB。离开对应页面不再由 Activity 持有旧背景；Activity 停止时解除背景引用、清空闲置图片缓存。主题选择/预览/编辑页在后台释放图片视图，返回按已保存的页面字段重建并恢复滚动；编辑草稿字段及私有图片文件继续保留。系统 UI_HIDDEN/后台内存回收通知也清缓存，不依赖 Android 14 起不再分发的旧低内存通知；不主动 GC，不 recycle 可能仍由在用遮罩持有的图片，不增加后台组件或权限。公开机制见 [ComponentCallbacks2](https://developer.android.com/reference/android/content/ComponentCallbacks2) 与 [位图采样](https://developer.android.com/topic/performance/graphics/load-bitmap)。
+
 ### 发布边界
 
 Google Play 版本应准确披露无障碍用途，提供单独的应用内显著披露、明确同意、Play Console 声明与演示。「斩心魔」的主要用途是个人自律，服务不声明 `isAccessibilityTool=true`。覆盖范围限于用户设置规则的前台 App；设备设置和卸载流程保持可用。声明能否获批由渠道审核决定。 [Google Play AccessibilityService 政策](https://support.google.com/googleplay/android-developer/answer/10964491)

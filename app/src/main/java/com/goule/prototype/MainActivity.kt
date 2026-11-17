@@ -50,6 +50,7 @@ class MainActivity : Activity() {
 
     private val store by lazy { RuleStore.get(this) }
     private val appearanceStore by lazy { BlockAppearanceStore.get(this) }
+    private val serviceHealth by lazy { ServiceHealthStore.get(this) }
     private var previewThemeId = BlockThemes.default.id
     private var managedThemeId: String? = null
     private var themeDialog: AlertDialog? = null
@@ -78,6 +79,7 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var content: LinearLayout
+    private var stoppedImageScroll: Int? = null
     private val refresh = object : Runnable {
         override fun run() {
             updateStatus()
@@ -159,8 +161,15 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        val resumeScroll = stoppedImageScroll
+        stoppedImageScroll = null
         appearanceStore.onImportFinished = { updateThemeImport() }
         updateThemeImport()
+        if (resumeScroll != null) {
+            // updateThemeImport already rebuilds the chooser/editor; avoid decoding twice.
+            if (page == Page.THEME_PREVIEW) render()
+            scroll.post { scroll.scrollTo(0, resumeScroll) }
+        }
         val freshTargets = eligibleTargets()
         val changed = freshTargets != targets
         targets = freshTargets
@@ -172,6 +181,27 @@ class MainActivity : Activity() {
         appearanceStore.onImportFinished = null
         handler.removeCallbacks(refresh)
         super.onPause()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::root.isInitialized) root.background = pageBackground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // These screens can retain a full personal image/preview through their view listeners.
+        // Draft fields/files live outside the view tree and are rebuilt when the user returns.
+        if (page in listOf(Page.THEMES, Page.THEME_PREVIEW, Page.THEME_EDITOR)) {
+            stoppedImageScroll = scroll.scrollY
+            liveTextUpdates.clear()
+            content.removeAllViews()
+            if (page == Page.THEME_PREVIEW) root.removeAllViews()
+        }
+        root.background = null
+        welcomeBackdrop = null
+        rulesBackdrop = null
+        trimImageCaches()
     }
 
     override fun onDestroy() {
@@ -217,13 +247,18 @@ class MainActivity : Activity() {
 
     private val servicePausedMessage: String get() = appState.pauseMessage
 
+    private fun recoveryEvidence() = serviceHealth.evidence().lines(appState) {
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(it))
+    }
+
     private fun signature(): List<String> {
         val now = store.now()
         return when (page) {
             Page.RULES -> store.rules.flatMap {
                 listOf(it.packageName, it.label, it.useMinutes.toString(), it.blockMinutes.toString(), ruleStatus(it, now))
             } + setupStatus()
-            Page.BACKGROUND, Page.SETTINGS, Page.RISK_INTERCEPTION -> listOf(setupStatus())
+            Page.SETTINGS, Page.PERMISSION -> listOf(setupStatus()) + recoveryEvidence()
+            Page.BACKGROUND, Page.RISK_INTERCEPTION -> listOf(setupStatus())
             Page.DETAIL -> currentRule()?.let {
                 listOf(ruleStatus(it, now), usageWindowLabel(it, now),
                     (it.editWait(now) == 0L).toString(), (it.removeWait(now) == 0L).toString(), setupStatus())
@@ -240,19 +275,24 @@ class MainActivity : Activity() {
         render()
     }
 
-    private val welcomeBackdrop by lazy { IllustratedBackdrop(this, welcome = true) }
-    private val rulesBackdrop by lazy { IllustratedBackdrop(this, welcome = false) }
+    private var welcomeBackdrop: IllustratedBackdrop? = null
+    private var rulesBackdrop: IllustratedBackdrop? = null
+
+    private fun pageBackground(): android.graphics.drawable.Drawable = when (page) {
+        Page.WELCOME -> welcomeBackdrop ?: IllustratedBackdrop(this, welcome = true).also { welcomeBackdrop = it }
+        Page.RULES -> if (store.rules.isEmpty()) nightSurface() else rulesBackdrop
+            ?: IllustratedBackdrop(this, welcome = false).also { rulesBackdrop = it }
+        else -> nightSurface()
+    }
 
     private fun render(keepScroll: Boolean = false) {
         val oldY = if (keepScroll) scroll.scrollY else 0
         liveTextUpdates.clear()
+        if (page != Page.WELCOME) welcomeBackdrop = null
+        if (page != Page.RULES) rulesBackdrop = null
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = when (page) {
-                Page.WELCOME -> welcomeBackdrop
-                Page.RULES -> if (store.rules.isEmpty()) nightSurface() else rulesBackdrop
-                else -> nightSurface()
-            }
+            background = pageBackground()
             setOnApplyWindowInsetsListener { view, insets ->
                 val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
                 val ime = insets.getInsets(WindowInsets.Type.ime())
@@ -457,6 +497,10 @@ class MainActivity : Activity() {
         content.addView(button(settingsAction, primary = true) {
             store.approve()
             openSystemSettings()
+        })
+        if (recovering) content.addView(card(6).apply {
+            addView(heading("中断记录", 18f))
+            recoveryEvidence().forEach { addView(copyText(it, 14f, NIGHT_MUTED)) }
         })
         content.addView(button("遇到问题", soft = true) {
             showSetupHelp = !showSetupHelp

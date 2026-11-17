@@ -26,13 +26,22 @@ internal class TimingDiagnostics private constructor(context: Context) {
     init {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         record("process start version=${info.versionName}/${info.longVersionCode} sdk=${Build.VERSION.SDK_INT} model=${Build.MODEL}")
+        val health = ServiceHealthStore.get(context)
         worker.execute {
             runCatching {
-                context.getSystemService(ActivityManager::class.java)
-                    .getHistoricalProcessExitReasons(context.packageName, 0, 3).forEach {
-                        journal.append("session=$session previous_exit wall=${it.timestamp} reason=${it.reason} status=${it.status} importance=${it.importance}")
-                    }
-            }.onFailure { journal.append("session=$session exit_history unavailable kind=${it.javaClass.simpleName}") }
+                val exits = context.getSystemService(ActivityManager::class.java)
+                    .getHistoricalProcessExitReasons(context.packageName, 0, 10)
+                    .filter { it.processName == context.packageName }.sortedByDescending { it.timestamp }
+                health.historyLoaded(exits.map {
+                    ProcessExit(it.timestamp, it.pid, it.reason, cleanExitDescription(it.description))
+                })
+                exits.take(3).forEach {
+                    journal.append("session=$session previous_exit wall=${it.timestamp} pid=${it.pid} reason=${it.reason} status=${it.status} importance=${it.importance} description=${cleanExitDescription(it.description)}")
+                }
+            }.onFailure {
+                health.historyLoaded(null, unavailable = true)
+                journal.append("session=$session exit_history unavailable kind=${it.javaClass.simpleName}")
+            }
         }
     }
 

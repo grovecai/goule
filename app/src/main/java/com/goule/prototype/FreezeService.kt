@@ -38,6 +38,7 @@ class FreezeService : AccessibilityService() {
     private val heartbeat = object : Runnable {
         override fun run() {
             val now = SystemClock.elapsedRealtime()
+            ServiceHealthStore.get(this@FreezeService).observed()
             snapshot("heartbeat lateByMs=${(now - heartbeatDue).coerceAtLeast(0)}")
             heartbeatDue = now + 30_000
             handler.postDelayed(this, 30_000)
@@ -122,6 +123,7 @@ class FreezeService : AccessibilityService() {
             listening = true
         }
         connected = true
+        ServiceHealthStore.get(this).connected()
         if (store.consent) store.activate()
         reloadEligible()
         store.onConfigurationChanged = {
@@ -330,6 +332,7 @@ class FreezeService : AccessibilityService() {
 
     private fun disconnect(reason: String) {
         observe(reason)
+        if (connected) ServiceHealthStore.get(this).disconnected()
         connected = false
         handler.removeCallbacks(heartbeat)
         clearForeground(reason)
