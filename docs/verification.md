@@ -1,5 +1,15 @@
 # Goule 验证手册
 
+## 亲妈催婚最新功能包保留数据安装（2026-11-17）
+
+用户连接手机并要求安装最新版、保留戒律和数据后，10:54:06（北京时间）将干净提交 `783c052d7ad861ad6472153d2d68c34cc40abd80` 的原签名Release覆盖安装至OPPO PLJ110，Android 16/API 36、ColorOS V16.1.0，仍为0.3.16/code 19。包含亲妈催婚和此前五项内置收敛；本包不同于已有GitHub v0.3.16附件，本轮没有发布或替换发行版。
+
+Release构建通过。安装前回拉手机原APK并核对原证书，新包通过原签名、包名/版本/最低Android 11/非调试标记、包内源码提交及16 KiB ZIP对齐；资源含原五项与block_mother，不含此前六个退休资源。使用 `adb install --no-incremental -r` 成功，未卸载或清数据；安装后回拉base.apk与本地包SHA-256一致：`d87c1e5ea73370269ec6e006e4af65c79f677b09a5ee1cd721e4f7aba3746cca`。
+
+安装前打开本应用使目标离开并保存进度，采集即时快照；安装前后三条target/eligible/usedMs/remainingMs/cycleStart/blockedUntil逐项完全一致。配置与当前周期参数均保留刷5/歇115分钟：抖音和红果已用0、各剩300000 ms；小红书已用6768 ms、剩293232 ms，三条均未禁用，周期起点不变。appId=10445、首次安装时间2026-11-14 12:00:57保持。未改戒律、切换主题、重传图片或开关权限，原私有目录保留；个人主题及图片没有另行导出逐文件比对。
+
+安装后启动MainActivity返回Status: ok，服务connected=true、consent=true，Enabled/Bound正常、Binding/Crashed未含本服务，journal failures=0。没有打开目标App消耗额度；新主题实际选择、物理旋转、自然用满/退出/到期仍待用户体验，沿用亲妈催婚主题实现节的模拟器检查边界。安装前后状态、原/新/回拉APK及installation-verification.json仅存本机 `~/.cache/goule-android/mother-theme-install-20261117/`，签名资料和私有运行材料不提交。安装后补记录，提交前 `./scripts/check` 通过（Python 46项、Debug/Release各58项、Lint和构建）；本轮未在正式手机执行隔离测试或消耗目标额度。
+
 ## 亲妈催婚主题（2026-11-17）
 
 按用户确认的原图与文案，在原五项末尾新增 `mother`「亲妈催婚」，不复用退休的 `marriage`。原图仅编码为1536×1024 WebP（质量95），保留妈妈「你是准备跟手机结婚啊？！」、女儿「它至少秒回我……」两句图内对白。页面喝止「还刷！对象呢？！」、提醒「手机都快盘出包浆了，对象倒是带一个回来啊！」，按钮「收起手机」「妈我起了」仍对应最近任务与返回桌面。仅新主题使用完整图片适配和最多36sp的标题，原五项显示行为不变。
