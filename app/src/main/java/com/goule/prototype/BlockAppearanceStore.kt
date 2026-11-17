@@ -18,14 +18,9 @@ import kotlin.math.roundToInt
 
 internal fun BlockTheme.artResource(): Int = when ((image as? ThemeImage.Bundled)?.key) {
     "rescue" -> R.drawable.block_rescue
-    "magic" -> R.drawable.block_magic
     "kitchen" -> R.drawable.block_kitchen
-    "garden" -> R.drawable.block_garden
-    "marriage" -> R.drawable.block_marriage
     "work" -> R.drawable.block_work
     "exam" -> R.drawable.block_exam
-    "sunlight" -> R.drawable.block_sunlight
-    "craving" -> R.drawable.block_craving
     else -> R.drawable.discipline_elder
 }
 

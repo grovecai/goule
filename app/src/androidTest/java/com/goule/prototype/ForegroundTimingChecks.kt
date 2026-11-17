@@ -106,7 +106,7 @@ internal object ForegroundTimingChecks {
                 event(service, target)
                 checkOverlayTheme(service, "kitchen")
                 // A preference change or repeated tick must not replace an attached theme/deadline.
-                check(appearance.setFixed("garden"))
+                check(appearance.setFixed("exam"))
                 val blocked = store.rules.single()
                 repeat(4) {
                     dialog(service)
@@ -122,7 +122,7 @@ internal object ForegroundTimingChecks {
 
                 // Screen changes clear the foreground before late dialog dismissal events arrive.
                 event(service, target)
-                checkOverlayTheme(service, "garden")
+                checkOverlayTheme(service, "exam")
                 val receiver = FreezeService::class.java.getDeclaredField("screenReceiver").apply {
                     isAccessible = true
                 }.get(service) as android.content.BroadcastReceiver

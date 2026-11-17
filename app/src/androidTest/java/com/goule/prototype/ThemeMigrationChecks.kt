@@ -31,13 +31,32 @@ internal object ThemeMigrationChecks {
                 check(!file.exists())
                 check(d.fresh(context).find("custom") == theme)
             }
-            val context = fixture("retired-baby")
-            context.getSharedPreferences("block_appearance", 0).edit().putString("mode", "RANDOM")
-                .putString("fixed", "baby").putStringSet("pool", setOf("baby")).commit()
+            for (id in listOf("baby", "magic", "garden", "marriage", "sunlight", "craving")) {
+                for (unified in listOf(false, true)) {
+                    val context = fixture("retired-$id-$unified")
+                    context.getSharedPreferences("block_appearance", 0).edit().putBoolean("unified_library", unified)
+                        .putString("mode", "RANDOM").putString("fixed", id).putStringSet("pool", setOf(id)).commit()
+                    val migrated = d.fresh(context)
+                    check(migrated.mode == BlockThemeMode.RANDOM && migrated.fixedId == "elder" && migrated.pool == setOf("elder"))
+                    check(migrated.availableThemes.none { it.id == id })
+                    check(migrated.resolve(BlockTheme(id, "旧主题", "旧", "旧", "旧")).theme == BlockThemes.default)
+                }
+            }
+            val context = fixture("retired-mixed-personal")
+            val image = File(context.noBackupFilesDir, "block-themes/own.webp").apply { requireNotNull(parentFile).mkdirs() }
+            val bitmap = Bitmap.createBitmap(50, 30, Bitmap.Config.ARGB_8888)
+            image.outputStream().use { bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, it) }; bitmap.recycle()
+            val own = BlockTheme("user_12345678-1234-1234-1234-123456789abc", "个人保留主题", "继续行动", "把今天的事做好。",
+                "个人图片", image = ThemeImage.Local("own.webp"))
+            context.getSharedPreferences("block_appearance", 0).edit().putBoolean("unified_library", true)
+                .putString("mode", "RANDOM").putString("fixed", "magic").putStringSet("deleted", setOf("work"))
+                .putStringSet("pool", setOf("magic", "kitchen", own.id))
+                .putString("personal_themes", ThemeCodec.encode(listOf(own))).commit()
             val migrated = d.fresh(context)
-            check(migrated.mode == BlockThemeMode.RANDOM && migrated.fixedId == "elder" && migrated.pool == setOf("elder"))
-            check(migrated.availableThemes.none { it.id == "baby" })
-            check(migrated.resolve(BlockTheme("baby", "旧主题", "旧", "旧", "旧")).theme == BlockThemes.default)
+            check(migrated.fixedId == "elder" && migrated.pool == setOf("kitchen", own.id))
+            check(migrated.availableThemes.none { it.id == "work" })
+            check(migrated.find(own.id).name == own.name && migrated.resolve(own).image?.width == 50)
+            check(migrated.setFixed(own.id) && migrated.resolve().theme.id == own.id)
         }
     }
 }

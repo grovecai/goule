@@ -97,7 +97,7 @@ internal object ThemeManagementChecks {
             d.click(activity, "删除这个主题"); d.confirm(activity, true)
             d.main { check(store.personalThemes.isEmpty() && store.fixedId == "elder" && store.pool == setOf("elder")) }
             d.mode(activity, BlockThemeMode.RANDOM)
-            d.main { check(store.setPool(setOf("garden"))) }; d.go(activity, "THEMES"); d.select(activity, "garden")
+            d.main { check(store.setPool(setOf("work"))) }; d.go(activity, "THEMES"); d.select(activity, "work")
             d.click(activity, "删除这个主题"); d.confirm(activity, true)
             d.main { check(store.mode == BlockThemeMode.RANDOM && store.pool == setOf("elder")) }
             d.click(activity, "选择随机主题（1 个）")
@@ -110,7 +110,7 @@ internal object ThemeManagementChecks {
             d.main {
                 for (theme in store.availableThemes.filter { store.canDelete(it.id) }) check(store.deleteTheme(theme.id))
                 check(store.availableThemes == listOf(BlockThemes.default))
-                check(store.deletedIds.size == 9 && !store.deleteTheme("elder"))
+                check(store.deletedIds.size == 4 && !store.deleteTheme("elder"))
                 check(d.fresh().availableThemes == listOf(BlockThemes.default))
                 check(RuleStore.get(d.context).rules == rules)
             }

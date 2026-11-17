@@ -23,7 +23,7 @@ class BlockThemesTest {
 
     @Test fun deletedAndRetiredSelectionsFallBackWithoutResurrection() {
         val themes = BlockThemes.available(setOf("kitchen", "garden"))
-        for (id in listOf("kitchen", "garden", "baby", "unknown")) {
+        for (id in listOf("kitchen", "magic", "garden", "marriage", "sunlight", "craving", "baby", "unknown")) {
             assertEquals(BlockThemes.default, BlockThemes.find(id, themes))
             assertEquals(BlockThemes.default, BlockThemes.choose(BlockThemeMode.RANDOM, id, setOf(id), themes))
         }
@@ -35,9 +35,10 @@ class BlockThemesTest {
     }
 
     @Test fun everyBuiltInContainsImageDialogueAndBothActionNames() {
-        assertEquals(10, BlockThemes.all.size)
+        assertEquals(listOf("elder", "kitchen", "work", "exam", "rescue"), BlockThemes.all.map { it.id })
+        assertEquals(listOf("戒律长老", "锅要糊了", "摸鱼警报", "挂科预警", "拯救网瘾少年"), BlockThemes.all.map { it.name })
         assertFalse(BlockThemes.all.any { it.id == "baby" || it.name == "奶瓶召唤" })
-        assertEquals(10, BlockThemes.all.map { it.id }.toSet().size)
+        assertEquals(5, BlockThemes.all.map { it.id }.toSet().size)
         for (theme in BlockThemes.all) {
             assertTrue(theme.image is ThemeImage.Bundled)
             assertNull(ThemeDraft.from(theme).error())
