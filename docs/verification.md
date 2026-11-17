@@ -914,3 +914,11 @@ v0.3.3 签名发布包已在 OPPO PLJ110（Android 16、ColorOS 16.1.0）覆盖�
 ### v0.3.4 发布包验证
 
 2026-11-11，0.3.4/versionCode 7，包名 com.goule.prototype，最低 Android 11。`./scripts/check`、assembleRelease、apksigner 和 zipalign 校验通过；下载 v0.3.3 发布资产并比对证书 SHA-256，一致。APK SHA-256：`77abf3db1b9460bb96d371eda233df2c3ef2847503344f983f8d255c8ff84e4c`。发布附独立校验文件和更新说明。版本号更新包未另装手机，相关功能真机结果见上一节及完整回归矩阵，失败项未宣称修复。
+
+## ColorOS FastClear 导致无障碍中断（2026-11-18）
+
+OPPO PLJ110，Android 16/API 36，ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(CN01)`。当前实际安装为 11 月 17 日 10:54 的 0.3.16/code 19 亲妈催婚功能构建，未安装仓库 v1.0.0。本次只读采集，未启动/强停/安装、开关权限或修改戒律，未使用 uiautomator。
+
+06:35:45.256 系统 events 明确 `o-kill(4013)` / `FastClear[4013]` 杀死本包 pid=28181，06:35:45.447 进程死亡，退出历史 06:35:45.474 为 reason=13 / OTHER KILLS BY SYSTEM；不是本应用 crash/ANR 的证据。用户明确当时未清理、正常使用，确认系统自动清理后异常断连。06:56:56 采集时 Enabled 含 FreezeService、Bound/Binding 空、Crashed 含服务；主界面新进程已运行仍未恢复。boot_count=9，连续开机约 6 天 8 小时，未发生本轮重启撤权。清理前持久日志仍 connected=true，无服务正常收尾；相机使用与内存状态变化仅是触发线索，具体厂商策略未确定。
+
+当前服务未恢复，末次只读绑定复核结果相同；未验收恢复后数据保持或自动清理修复，未实施产品增强或发布。原始资料在本机 `/Users/caiyuanrui/.cache/goule-android/service-stop-20261118/`，不提交整份日志。`./scripts/check` 通过：Python 46 项、Gradle Debug/Release 单元测试与 Lint 检查、Debug/AndroidTest APK 构建（现有 Android 任务大部分复用缓存）；本轮没有运行设备回归，不据此宣称恢复或 FastClear 修复通过。详见 [完整诊断及增强建议](service-stop-diagnosis-2026-11-18.md)。
