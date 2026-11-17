@@ -1191,13 +1191,18 @@ class MainActivity : Activity() {
         content.addView(button("打开应用信息", soft = true) {
             if (!openBackgroundSettings(battery = false)) toast("请手动打开系统设置")
         })
-        content.addView(heading("2. 电池优化", 18f))
+        content.addView(heading("2. 自启动", 18f))
+        content.addView(copyText(autoStartHelp(), 15f))
+        content.addView(button("打开系统设置", soft = true) {
+            if (!openAutoStartSettings()) toast("请手动打开系统设置，查找自启动设置")
+        })
+        content.addView(heading("3. 电池优化", 18f))
         content.addView(copyText("在列表中找到「斩心魔」，选择「不优化」或「不允许优化」。若未显示，可先切换到「所有应用」。", 15f))
         content.addView(copyText("这是 Android 通用机制，各品牌的入口和名称可能不同，也可能合并在应用电池设置中；没有此选项可略过。", 14f, NIGHT_MUTED))
         content.addView(button("打开电池优化列表", soft = true) {
             if (!openBackgroundSettings(battery = true)) toast("请手动在系统设置中查找电池优化")
         })
-        content.addView(heading("3. 最近任务与清理", 18f))
+        content.addView(heading("4. 最近任务与清理", 18f))
         content.addView(copyText("锁定「斩心魔」的最近任务，可减少一键清理的影响。", 15f))
         content.addView(copyText(recentTaskLockHelp(), 15f))
         content.addView(copyText("这些设置不能保证服务始终运行。若清理后出现「连接中断」，请到无障碍设置中先关闭再开启服务，返回后确认「已设置」。", 14f, NIGHT_MUTED))

@@ -24,6 +24,24 @@ internal fun backgroundProfile(manufacturer: String = Build.MANUFACTURER): Backg
         )
     }
 
+internal fun autoStartHelp(manufacturer: String = Build.MANUFACTURER): String =
+    if (manufacturer.equals("oppo", ignoreCase = true)) {
+        "设置 → 应用 → 自启动，找到「斩心魔」，开启开关。\n" +
+            "不同 ColorOS 版本的入口可能不同，请以手机实际显示为准。"
+    } else {
+        "在系统设置或系统自带的手机管家中找到「自启动」或「应用启动管理」，允许「斩心魔」自启动。\n" +
+            "名称和入口因系统而异，没有此选项可略过。"
+    }
+
+internal fun Activity.openAutoStartSettings(): Boolean = try {
+    startActivity(Intent(Settings.ACTION_SETTINGS))
+    true
+} catch (_: ActivityNotFoundException) {
+    false
+} catch (_: SecurityException) {
+    false
+}
+
 internal fun recentTaskLockHelp(manufacturer: String = Build.MANUFACTURER): String =
     if (manufacturer.equals("oppo", ignoreCase = true)) {
         "OPPO/ColorOS 操作步骤：\n" +
