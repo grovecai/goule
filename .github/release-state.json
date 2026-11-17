@@ -6,6 +6,6 @@
   "previous_tag": "v0.3.17",
   "source_commit": "bf3d20537ac613d191b92b146e696be08ae2c57f",
   "prerelease": false,
-  "complete": false,
+  "complete": true,
   "changed_files": []
 }
