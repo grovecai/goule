@@ -1,5 +1,17 @@
 # Goule 验证手册
 
+## v1.0.0 正式版发布（2026-11-17）
+
+用户要求发布正式 1.0 版本。通过 [Publish Android release](https://github.com/grovecai/goule/actions/runs/44105416189) 指定 `version=v1.0.0`、`prerelease=false`、`force=true`，功能沿用 v0.3.17。版本为 1.0.0/code 21，注解标签对应干净发布提交 `e606aab15558474f389bd155c10eb4c1d9f8c10d`。
+
+发布准备提交前，本机使用已有 JDK 17 与 Android SDK 35 执行 `./scripts/check` 通过（Python 46 项、Debug/Release 各 58 项单元测试、Lint、Debug/测试 APK 构建）；首次未配置 JAVA_HOME 的尝试只完成 Python 检查，定位原有 JDK 后完整重跑通过。发布流水线另行执行项目检查、Release 构建、原签名及包验证。
+
+22:42:49（北京时间）GitHub 正式公开，非草稿且 `prerelease=false`，`releases/latest` 指向 v1.0.0。独立回下载 APK/SHA-256，核对文件摘要、原证书、版本/包名/最低 Android 11/非调试标记、包内源码提交与 16 KiB ZIP 对齐通过。证书 SHA-256 为 `a99c6b2900299c459fe1121dc7868762d8afb66ec9f5b4819a471a5b62103559`，APK 为 5,249,420 字节，SHA-256 为 `174d0531eac45ee9ded9983eda4b950d6c7f6256c3f38f8fb9dd2c0ddb396a63`。
+
+22:51:40（北京时间）流水线完成 Gitee 两项附件的上传与回下载验收，22:52:03 整体工作流成功。两平台均为正式版（`prerelease=false`），标签和发布提交一致，Gitee 正文除下载链接切换为国内地址外与 GitHub 一致；README 下载入口和发布完成状态已更新。本机再次匿名回下载 Gitee APK 与 SHA-256 文件，分别与 GitHub 原附件逐字节一致（5,249,420 与 83 字节），并核对 Gitee main 与 GitHub main 一致。
+
+本轮不安装手机，不新增真机行为验收结论；OPPO PLJ110（Android 16、ColorOS V16.1.0）仅沿用此前功能构建结果，ColorOS 撤权、来电恢复、新主题自然禁用/到期与更多机型等边界继续保留，见 [正式版说明](release-v1.0.0.md)。下载与独立检查材料只存本机临时目录，不提交私有运行资料或签名密钥。
+
 ## 亲妈催婚最新功能包保留数据安装（2026-11-17）
 
 用户连接手机并要求安装最新版、保留戒律和数据后，10:54:06（北京时间）将干净提交 `783c052d7ad861ad6472153d2d68c34cc40abd80` 的原签名Release覆盖安装至OPPO PLJ110，Android 16/API 36、ColorOS V16.1.0，仍为0.3.16/code 19。包含亲妈催婚和此前五项内置收敛；本包不同于已有GitHub v0.3.16附件，本轮没有发布或替换发行版。
