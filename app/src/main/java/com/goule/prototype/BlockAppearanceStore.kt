@@ -21,6 +21,7 @@ internal fun BlockTheme.artResource(): Int = when ((image as? ThemeImage.Bundled
     "kitchen" -> R.drawable.block_kitchen
     "work" -> R.drawable.block_work
     "exam" -> R.drawable.block_exam
+    "mother" -> R.drawable.block_mother
     else -> R.drawable.discipline_elder
 }
 

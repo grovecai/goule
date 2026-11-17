@@ -3,8 +3,12 @@ package com.goule.prototype
 import android.app.Instrumentation
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
+import android.graphics.RectF
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
 import java.io.File
 
 internal object BlockThemeChecks {
@@ -60,11 +64,32 @@ internal object BlockThemeChecks {
                     view.layout(0, 0, w, h)
                     val labels = d.views(view).filterIsInstance<Button>().map { it.text.toString() }
                     check(labels == listOf(appearance.theme.closeLabel, appearance.theme.homeLabel))
+                    if (appearance.theme.id == "mother") {
+                        val art = d.views(view).filterIsInstance<ImageView>().single()
+                        check(art.drawable.intrinsicWidth == 1536 && art.drawable.intrinsicHeight == 1024)
+                        val bounds = RectF(0f, 0f, 1536f, 1024f)
+                        art.imageMatrix.mapRect(bounds)
+                        check(art.scaleType == ImageView.ScaleType.FIT_CENTER && bounds.left >= -1f && bounds.top >= -1f &&
+                            bounds.right <= art.width + 1f && bounds.bottom <= art.height + 1f) {
+                            "Mother theme speech balloons are cropped at ${width}x$height"
+                        }
+                        if (width == 360) {
+                            check(d.views(view).filterIsInstance<TextView>().single {
+                                it.text.toString() == appearance.theme.headline
+                            }.lineCount == 1)
+                            for (button in d.views(view).filterIsInstance<Button>()) {
+                                val actionBounds = Rect(0, 0, button.width, button.height)
+                                view.offsetDescendantRectToMyCoords(button, actionBounds)
+                                check(actionBounds.bottom <= h) { "Mother theme action needs scrolling at normal font size" }
+                            }
+                        }
+                    }
                     d.views(view).filterIsInstance<Button>().forEach { it.performClick() }
-                    if (width == 360) {
+                    if (width == 360 || appearance.theme.id == "mother") {
                         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
                         view.draw(Canvas(bitmap))
-                        File(d.context.getExternalFilesDir(null), "theme-${appearance.theme.id}.png").outputStream().use {
+                        val suffix = if (width == 360) "" else "-landscape"
+                        File(d.context.getExternalFilesDir(null), "theme-${appearance.theme.id}$suffix.png").outputStream().use {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                         }
                         bitmap.recycle()

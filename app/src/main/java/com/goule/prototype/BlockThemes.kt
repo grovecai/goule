@@ -62,6 +62,8 @@ internal object BlockThemes {
         BlockTheme("work", "摸鱼警报", "老板来了！", "牛马先归位，别把工位刷成离职位！", "上司探过工位指向屏幕，桌上摆着小金牛", "结束摸鱼", "回去干活"),
         BlockTheme("exam", "挂科预警", "要挂科了！", "这题不会就是不会，下一条也救不了你！", "教授指着厚厚的课本，催促大学生复习", "先别刷了", "去复习"),
         BlockTheme("rescue", "拯救网瘾少年", "抓住了！", "人先上岸，正事还等着你呢！", "长老拉住被手机漩涡困住的年轻修行者", "挣脱心魔", "上岸去"),
+        BlockTheme("mother", "亲妈催婚", "还刷！对象呢？！", "手机都快盘出包浆了，对象倒是带一个回来啊！",
+            "红毛衣妈妈掀起被角问：你是准备跟手机结婚啊？！女儿护着手机回答：它至少秒回我……", "收起手机", "妈我起了"),
     )
     val default get() = all.first()
     fun available(deleted: Set<String>, personal: List<BlockTheme> = emptyList()) =

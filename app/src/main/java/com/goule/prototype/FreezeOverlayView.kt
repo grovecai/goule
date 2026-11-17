@@ -74,7 +74,9 @@ internal class FreezeOverlayView(
         else setImageResource(appearance.theme.artResource())
         contentDescription = appearance.theme.description
         adjustViewBounds = !crop && appearance.image == null
-        scaleType = if (crop && appearance.image == null) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
+        // This artwork includes speech balloons: preserve them even in short/landscape image slots.
+        scaleType = if (crop && appearance.image == null && appearance.theme.id != "mother")
+            ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
     }
 
     private fun speech(widthDp: Int, compact: Boolean): View {
@@ -85,7 +87,8 @@ internal class FreezeOverlayView(
         }
         val headline = if (compact) 34f else ((widthDp - 56) * .19f).coerceIn(40f, 64f)
         val appLine = if (compact) 22f else ((widthDp - 56) * .095f).coerceIn(20f, 33f)
-        dialogue.addView(context.copyText(appearance.theme.headline, headline, Color.rgb(172, 48, 32), true).apply {
+        val headlineSize = if (appearance.theme.id == "mother") headline.coerceAtMost(36f) else headline
+        dialogue.addView(context.copyText(appearance.theme.headline, headlineSize, Color.rgb(172, 48, 32), true).apply {
             isAccessibilityHeading = true
             letterSpacing = -.055f
         })

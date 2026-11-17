@@ -27,6 +27,21 @@ internal object ThemeManagementChecks {
                 check(!d.has(activity, "删除这个主题") && !store.deleteTheme("elder"))
                 check(store.availableThemes.none { it.id == "baby" })
             }
+            d.select(activity, "mother")
+            d.click(activity, "预览 · 亲妈催婚")
+            activity = d.recreate(activity)
+            d.main {
+                check(store.fixedId == "mother" && d.has(activity, "还刷！对象呢？！"))
+                check(d.has(activity, "手机都快盘出包浆了，对象倒是带一个回来啊！"))
+                check(d.has(activity, "收起手机") && d.has(activity, "妈我起了"))
+                val view = d.root(activity)
+                val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+                view.draw(Canvas(bitmap))
+                File(d.context.getExternalFilesDir(null), "mother-theme-preview.png").outputStream().use {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                }; bitmap.recycle()
+            }
+            d.click(activity, "妈我起了")
             d.select(activity, "kitchen")
             d.main {
                 val view = d.root(activity)
@@ -110,7 +125,7 @@ internal object ThemeManagementChecks {
             d.main {
                 for (theme in store.availableThemes.filter { store.canDelete(it.id) }) check(store.deleteTheme(theme.id))
                 check(store.availableThemes == listOf(BlockThemes.default))
-                check(store.deletedIds.size == 4 && !store.deleteTheme("elder"))
+                check(store.deletedIds.size == 5 && !store.deleteTheme("elder"))
                 check(d.fresh().availableThemes == listOf(BlockThemes.default))
                 check(RuleStore.get(d.context).rules == rules)
             }

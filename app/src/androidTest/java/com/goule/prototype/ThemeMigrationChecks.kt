@@ -42,6 +42,19 @@ internal object ThemeMigrationChecks {
                     check(migrated.resolve(BlockTheme(id, "旧主题", "旧", "旧", "旧")).theme == BlockThemes.default)
                 }
             }
+            val existing = fixture("before-mother-added")
+            existing.getSharedPreferences("block_appearance", 0).edit().putBoolean("unified_library", true)
+                .putString("mode", "RANDOM").putString("fixed", "exam")
+                .putStringSet("deleted", setOf("marriage", "work"))
+                .putStringSet("pool", setOf("kitchen", "exam")).commit()
+            val upgraded = d.fresh(existing)
+            check(upgraded.fixedId == "exam" && upgraded.mode == BlockThemeMode.RANDOM)
+            check(upgraded.pool == setOf("kitchen", "exam") && upgraded.deletedIds == setOf("marriage", "work"))
+            check(upgraded.availableThemes.any { it.id == "mother" } && upgraded.canDelete("mother"))
+            check(upgraded.setFixed("mother") && upgraded.resolve().theme.id == "mother")
+            check(upgraded.setMode(BlockThemeMode.RANDOM) && upgraded.setPool(setOf("mother")))
+            check(upgraded.resolve().theme.id == "mother" && d.fresh(existing).pool == setOf("mother"))
+            check(upgraded.deleteTheme("mother") && d.fresh(existing).find("mother") == BlockThemes.default)
             val context = fixture("retired-mixed-personal")
             val image = File(context.noBackupFilesDir, "block-themes/own.webp").apply { requireNotNull(parentFile).mkdirs() }
             val bitmap = Bitmap.createBitmap(50, 30, Bitmap.Config.ARGB_8888)

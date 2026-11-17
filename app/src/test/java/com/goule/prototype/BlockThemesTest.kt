@@ -35,10 +35,10 @@ class BlockThemesTest {
     }
 
     @Test fun everyBuiltInContainsImageDialogueAndBothActionNames() {
-        assertEquals(listOf("elder", "kitchen", "work", "exam", "rescue"), BlockThemes.all.map { it.id })
-        assertEquals(listOf("戒律长老", "锅要糊了", "摸鱼警报", "挂科预警", "拯救网瘾少年"), BlockThemes.all.map { it.name })
+        assertEquals(listOf("elder", "kitchen", "work", "exam", "rescue", "mother"), BlockThemes.all.map { it.id })
+        assertEquals(listOf("戒律长老", "锅要糊了", "摸鱼警报", "挂科预警", "拯救网瘾少年", "亲妈催婚"), BlockThemes.all.map { it.name })
         assertFalse(BlockThemes.all.any { it.id == "baby" || it.name == "奶瓶召唤" })
-        assertEquals(5, BlockThemes.all.map { it.id }.toSet().size)
+        assertEquals(6, BlockThemes.all.map { it.id }.toSet().size)
         for (theme in BlockThemes.all) {
             assertTrue(theme.image is ThemeImage.Bundled)
             assertNull(ThemeDraft.from(theme).error())
