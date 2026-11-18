@@ -6,7 +6,7 @@
   "previous_tag": "v1.0.0",
   "source_commit": "59c2b777fdf22cf0d515005c08e9aaf50e74703e",
   "prerelease": true,
-  "complete": false,
+  "complete": true,
   "changed_files": [
     "app/src/androidTest/java/com/goule/prototype/PageRefreshInstrumentation.kt",
     "app/src/androidTest/java/com/goule/prototype/ServiceHealthMemoryChecks.kt",

@@ -1,12 +1,12 @@
 {
-  "verified_at": "2026-11-17T22:51:40+08:00",
-  "tag": "v1.0.0",
-  "commit": "e606aab15558474f389bd155c10eb4c1d9f8c10d",
-  "version_code": 21,
+  "verified_at": "2026-11-18T15:36:24+08:00",
+  "tag": "v1.0.1",
+  "commit": "b6f1190085a833a45c891ad3ac67293eb9c96e60",
+  "version_code": 22,
   "certificate_sha256": "a99c6b2900299c459fe1121dc7868762d8afb66ec9f5b4819a471a5b62103559",
-  "apk_sha256": "174d0531eac45ee9ded9983eda4b950d6c7f6256c3f38f8fb9dd2c0ddb396a63",
-  "apk_size": 5249420,
+  "apk_sha256": "96c9502627cf200ba45e96c39bf1f40693bfeab1b43a15584a7651ee52da8b4a",
+  "apk_size": 5269900,
   "github_and_gitee_downloads_match": true,
-  "workflow_url": "https://github.com/grovecai/goule/actions/runs/44105416189",
+  "workflow_url": "https://github.com/grovecai/goule/actions/runs/44259189461",
   "device_testing": "Not performed by CI; see existing verification records"
 }
