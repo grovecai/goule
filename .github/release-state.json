@@ -1,11 +1,29 @@
 {
   "schema": 1,
-  "tag": "v1.0.0",
-  "version": "1.0.0",
-  "version_code": 21,
-  "previous_tag": "v0.3.17",
-  "source_commit": "bf3d20537ac613d191b92b146e696be08ae2c57f",
-  "prerelease": false,
-  "complete": true,
-  "changed_files": []
+  "tag": "v1.0.1",
+  "version": "1.0.1",
+  "version_code": 22,
+  "previous_tag": "v1.0.0",
+  "source_commit": "59c2b777fdf22cf0d515005c08e9aaf50e74703e",
+  "prerelease": true,
+  "complete": false,
+  "changed_files": [
+    "app/src/androidTest/java/com/goule/prototype/PageRefreshInstrumentation.kt",
+    "app/src/androidTest/java/com/goule/prototype/ServiceHealthMemoryChecks.kt",
+    "app/src/main/AndroidManifest.xml",
+    "app/src/main/java/com/goule/prototype/BackdropImages.kt",
+    "app/src/main/java/com/goule/prototype/BackgroundSupport.kt",
+    "app/src/main/java/com/goule/prototype/BlockAppearanceStore.kt",
+    "app/src/main/java/com/goule/prototype/Design.kt",
+    "app/src/main/java/com/goule/prototype/FreezeService.kt",
+    "app/src/main/java/com/goule/prototype/GouleApplication.kt",
+    "app/src/main/java/com/goule/prototype/ImageSampling.kt",
+    "app/src/main/java/com/goule/prototype/MainActivity.kt",
+    "app/src/main/java/com/goule/prototype/ServiceHealth.kt",
+    "app/src/main/java/com/goule/prototype/ServiceHealthStore.kt",
+    "app/src/main/java/com/goule/prototype/TimingDiagnostics.kt",
+    "app/src/test/java/com/goule/prototype/ImageSamplingTest.kt",
+    "app/src/test/java/com/goule/prototype/ServiceHealthTest.kt",
+    "scripts/check-ui"
+  ]
 }
