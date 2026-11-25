@@ -107,6 +107,7 @@ internal object ForegroundTimingChecks {
                 checkOverlayTheme(service, "kitchen")
             }
             replayRecentsOrdering(service, store, target, launcher, onMain)
+            replayClosingNotificationPane(service, store, target, launcher, onMain)
             val blockedBeforeDeparture = store.rules.single()
             onMain {
                 event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
@@ -283,6 +284,65 @@ internal object ForegroundTimingChecks {
             checkNoOverlay(service)
             check(store.rules.single() == blocked)
         }
+    }
+
+    private fun replayClosingNotificationPane(service: FreezeService, store: RuleStore, target: String,
+        launcher: String, onMain: (() -> Unit) -> Unit,
+    ) {
+        val field = FreezeService::class.java.getDeclaredField("systemWindows").apply { isAccessible = true }
+        val original = field.get(service)
+        val blocked = store.rules.single()
+        fun pane(changes: Int) = event(service, "com.android.systemui", changes,
+            className = "android.widget.FrameLayout", fullScreen = false)
+        try {
+            onMain {
+                field.set(service, SystemWindowPolicy("OPPO"))
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                checkNoOverlay(service)
+                event(service, launcher)
+                event(service, target)
+                // Actual adversarial round: target resumed before the shade's closing event.
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, target)
+                checkOverlayTheme(service, "kitchen")
+                event(service, launcher)
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, target)
+                checkOverlayTheme(service, "kitchen")
+            }
+            SystemClock.sleep(150)
+            onMain {
+                // Notification and launcher close signals are independent: either can be last.
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, target)
+                checkOverlayTheme(service, "kitchen")
+                event(service, launcher)
+                checkForeground(service, null)
+                checkNoOverlay(service)
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                event(service, target)
+                // Opening the shade anew exits; its later dismissal cannot resurrect the target.
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, null)
+                checkNoOverlay(service)
+                // Outside a recents return, the same unknown closing root stays conservative.
+                event(service, target)
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, null)
+                checkNoOverlay(service)
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                event(service, target)
+            }
+            SystemClock.sleep(1_700)
+            onMain {
+                pane(AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                checkForeground(service, null)
+                checkNoOverlay(service)
+                check(store.rules.single() == blocked)
+            }
+        } finally { onMain { field.set(service, original) } }
     }
 
     private fun checkOverlayLifecycle(service: FreezeService, store: RuleStore, target: String,

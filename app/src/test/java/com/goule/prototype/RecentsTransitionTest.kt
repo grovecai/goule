@@ -87,4 +87,21 @@ class RecentsTransitionTest {
         assertEquals(Decision.PASS, recents.launcherEvent("home", 2_602, false, false))
     }
 
+    @Test fun recentReturnExpiresAndCannotReviveWithoutTarget() {
+        recents.launcherEvent("home", 100, true, false)
+        assertFalse(recents.returningToTarget(110))
+        recents.targetResumed(200)
+        assertTrue(recents.returningToTarget(600))
+        recents.launcherEvent("home", 650, false, true)
+        assertTrue(recents.returningToTarget(770))
+        assertTrue(recents.returningToTarget(771))
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 771, false, false))
+        assertFalse(recents.returningToTarget(772))
+        recents.reset()
+        assertFalse(recents.returningToTarget(800))
+        recents.launcherEvent("home", 1_000, true, false)
+        recents.targetResumed(1_100)
+        assertFalse(recents.returningToTarget(2_601))
+    }
+
 }

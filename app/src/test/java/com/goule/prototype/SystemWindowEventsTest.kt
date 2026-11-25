@@ -51,4 +51,17 @@ class SystemWindowEventsTest {
             assertFalse(policy.isPassiveContainerUpdate(name, "android.widget.FrameLayout", false, 0))
         }
     }
+    @Test fun closingColorOsContainerNeedsAnActiveConfirmedRecentsReturn() {
+        val policy = SystemWindowPolicy("OPPO")
+        assertTrue(policy.isClosingContainerDuringReturn("com.android.systemui", "android.widget.FrameLayout", false, 32, true))
+        assertFalse(policy.isClosingContainerDuringReturn("com.android.systemui", "android.widget.FrameLayout", false, 32, false))
+        for (changes in listOf(0, 1, 16, 16 or 32, 64)) {
+            assertFalse(policy.isClosingContainerDuringReturn("com.android.systemui", "android.widget.FrameLayout", false, changes, true))
+        }
+        assertFalse(policy.isClosingContainerDuringReturn("com.android.systemui", "android.widget.FrameLayout", true, 32, true))
+        assertFalse(policy.isClosingContainerDuringReturn("com.android.settings", "android.widget.FrameLayout", false, 32, true))
+        assertFalse(policy.isClosingContainerDuringReturn("com.android.systemui", "android.app.Dialog", false, 32, true))
+        assertFalse(SystemWindowPolicy("Google").isClosingContainerDuringReturn("com.android.systemui", "android.widget.FrameLayout", false, 32, true))
+    }
+
 }

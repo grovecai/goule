@@ -32,6 +32,13 @@ internal class RecentsTransition {
         interruptedBeforeResume = false
     }
 
+    // SystemUI and launcher panes can finish in either order after a confirmed return.
+    // This freshness window does not change the launcher's shorter post-close tail.
+    fun returningToTarget(time: Long): Boolean {
+        val resumed = returnedAt ?: return false
+        return time - resumed in 0..RETURN_MS
+    }
+
     // Card animations can emit an unrelated window before any target has resumed.
     // Foreground still clears immediately; only unfinished transition metadata survives.
     fun nonTargetWindow() {

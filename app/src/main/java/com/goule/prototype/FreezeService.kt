@@ -178,6 +178,13 @@ class FreezeService : AccessibilityService() {
             reconcile(foreground, "floating system dialog")
             return
         }
+        if (systemWindows.isClosingContainerDuringReturn(name, event.className?.toString(),
+                event.isFullScreen, event.contentChangeTypes,
+                foreground != null && recents.returningToTarget(event.eventTime))) {
+            observe("closing ColorOS pane during recents return; retain confirmed target")
+            reconcile(foreground, "closing pane during recents return")
+            return
+        }
         // This ColorOS root update kept target focus. Notification panes use the same
         // class, so a pane/content change must still take the normal exit path.
         if (systemWindows.isPassiveContainerUpdate(name, event.className?.toString(),
