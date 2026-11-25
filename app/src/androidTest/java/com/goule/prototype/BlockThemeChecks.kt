@@ -18,7 +18,9 @@ internal object BlockThemeChecks {
         d.main { store.discardDraft(); check(store.setFixed("elder")) }
         d.prepare("valid")
         val draftImage = d.main { store.draftImage() }
-        check(draftImage?.width == 1440 && draftImage.height == 720)
+        check(draftImage?.width == 1440 && draftImage.height == 720) {
+            "Imported draft dimensions=${draftImage?.width}x${draftImage?.height}, hasDraft=${store.hasDraftImage}, result=${store.takeImportMessage()}"
+        }
         val first = d.main { checkNotNull(store.savePersonal(ThemeDraft(name = "第一张主题"))) }
         val saved = d.main { store.resolve(first) }
         check(saved.theme.id == first.id && saved.image?.width == 1440)

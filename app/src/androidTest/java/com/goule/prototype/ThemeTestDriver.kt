@@ -60,11 +60,19 @@ internal class ThemeTestDriver(val instrumentation: Instrumentation) {
         main { dialog(activity).getButton(if (yes) AlertDialog.BUTTON_POSITIVE else AlertDialog.BUTTON_NEGATIVE).performClick() }; idle()
     }
     fun prepare(kind: String) {
+        ensureImageProvider()
         main { store.importImage(Uri.parse("content://com.goule.uiverify.images/$kind")) }
         val until = SystemClock.uptimeMillis() + 15_000
         while (main { store.importing } && SystemClock.uptimeMillis() < until) SystemClock.sleep(50)
         check(!main { store.importing }) { "Image import did not complete" }; idle()
     }
+    private fun ensureImageProvider() {
+        check(context.contentResolver.acquireUnstableContentProviderClient("com.goule.uiverify.images")
+            ?.use { true } == true) {
+            "Test image provider is unavailable; run scripts/check-ui to explicitly start its APK before instrumentation"
+        }
+    }
+
     fun fresh(context: Context = this.context): BlockAppearanceStore = BlockAppearanceStore::class.java
         .getDeclaredConstructor(Context::class.java).apply { isAccessible = true }.newInstance(context)
     fun recreate(activity: Activity): Activity {

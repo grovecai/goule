@@ -1025,3 +1025,23 @@ Release 构建通过，APK 嵌入源码、包名、非调试标记、Android 11 
 八项相邻真实检查也通过：遮罩返回桌面按钮、桌面重新进抖音、进入系统设置、设置返回抖音、小红书禁用罩、两受限 App 切回抖音、系统 Home、本应用戒律页。每项状态稳定后再等待 1700 ms 复核，没有迟到事件重新加/撤错罩；全程未点目标内容、改规则/主题或开关权限。结束时三条戒律全部状态与安装后快照逐项相同，Enabled/Bound 正常，Crashed 空。独立包 `com.goule.uiverify(.test)` 已卸载，手机停在正式戒律页；未清理其他最近任务或更改系统设置。
 
 本轮未实际锁屏/解锁、来电、重启或等待正式长周期自然到期，这些边界采用独立包屏幕回调/中断/短截止及规则回归，不记新的真实全路径通过。OPPO 完整图片导入尺寸断言失败仍单列待查，不能把本次遮罩专项与十二组模拟器 PASS 表述为整套 OPPO 全通过。本轮未新建发行版。
+
+
+## OPPO 图片导入测试源初始化与主题回归（2026-11-25）
+
+设备为 OPPO PLJ110（Android 16、ColorOS V16.1.0）。旧用例的 `draftImage` 实际为 null，`hasDraft=false`，直接读取固定测试 URI 得到 `FileNotFoundException: No content provider: content://com.goule.uiverify.images/valid`；安装登记中 provider 存在，`.test` APK 却仍为 `stopped=true`。这说明失败在取得测试输入之前，不能据尺寸断言认定生产解码或缩放失败。
+
+对照：保持测试客户端 Activity 可见仍失败，补 Debug provider queries 也失败，故撤回该声明；测试客户端跨包启动来源又被 OPPO 的 ActivityStartController 忽略。测试部署端显式启动来源 APK 后，来源为 stopped=false，同一生产图片导入与渲染检查 PASS。Instrumentation 的代码执行在目标包进程，不等于启动独立 `.test` provider APK。本机结论限于此机此路径；Android 关于 stopped 状态与直接/间接启动的通用说明见 [官方文档](https://developer.android.com/about/versions/15/behavior-changes-all#stopped-state)。
+
+最终修复仅在测试层：新增 androidTest 内的无界面初始化 Activity；`scripts/check-ui` 安装两包后从部署端显式启动来源并核对 Status: ok，再执行 instrumentation；每次导入预检 provider，来源不可用时给出明确测试环境错误。图片尺寸断言补上实际值和导入结果，保留 1440×720 的验收要求；图像处理不改、不放宽断言、不新增 Release 权限/queries。导入/渲染阶段保留可见测试 Activity，避免 ColorOS 将只有 instrumentation 的进程按缓存清理。新增 themesOnly 入口方便对全新独立包复测迁移、导入/管理/渲染与缓存生命周期；完整入口仍执行这些检查。
+
+重复诊断中复用旧测试数据会触发迁移用例的前置状态断言，系统也拒绝 shell 的 `pm clear`；最终按标准脚本卸载并重装独立包取得干净状态，没有对正式包清数据或改规则/主题。中间 Kotlin 因可变 Activity 捕获失去智能类型转换而编译失败，改用固定的 timingActivity 引用后重编译通过。最终执行结果见下文；私有日志和渲染图位于本机 `~/.cache/goule-android/image-import-20261125/`，不提交原始设备材料。
+
+
+最终验收：`GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过，Python 46 项、Debug/Release 各 69 项零失败，Lint、Debug/测试构建通过；Android 15/API 35 模拟器与 `GOULE_UI_DEVICE=3B168R00ANY00000 ./scripts/check-ui` 的 OPPO PLJ110 / Android 16 / ColorOS V16.1.0 各完整十二组全部 PASS。两端均从脚本要求的干净独立包开始，部署端初始化返回 Status: ok，不依赖应用跨包启动，也没有放宽原尺寸和错误保留断言。前轮 OPPO 图片导入失败待查项至此关闭。
+
+相关功能通过：有效 PNG 归一化为 1440×720；第二张/替换图片、保存后旧文件清理、编辑放弃保持旧图、损坏/拒绝读取/超过20 MB 均保留已保存主题；多个个人主题、固定/随机池、删除当前与最后项的回退、旧图片与旧模式迁移、主题预览、横竖屏/大字号及按钮回调、后台释放/返回重载/草稿保留和在用遮罩图片不被 recycle 均通过。整套还包含前台/最近任务/额度用满/到期/多 App 独立回归，而非只复测失败断言。这里的导入使用独立合成图片 URI 和生产处理管线，未操作用户的真实照片或系统相册选择流程。
+
+两端各回拉22份渲染与内存材料；人工核对 OPPO 个人替换图片（90×300 蓝色样本）遮罩的图片比例、文本及两个退出按钮，以及主题管理页无裁切。OPPO 个人图片缓存 trim 前4,147,200字节、trim 后0，在用遮罩仍可绘制，返回可重新载入；计数不等同进程 PSS 变化。调试期间新增可见测试宿主页曾与后续 startActivitySync 重复启动相撞而等待，已在导入渲染组结束后及时 finish、等待 idle 并解除引用；旧运行被停止后从干净安装完整重跑取得上述 PASS，不把人为停止的 Process crashed 记作产品崩溃。
+
+`assembleRelease` 通过，Release 清单/DEX 不含 ThemeImageFixtureActivity 或测试 authority，`app/src/main` 与产品构建配置无改动。正式手机保持前轮原签名 `4cf18f6` 功能包，本轮无必要覆盖安装、无新发布，戒律/主题未手动修改。最终 Enabled/Bound 正常、Crashed 空，独立包及其 `.test` 已清理，手机停在正式戒律页。相比08:44安装快照，红果固定周期于08:47:34.060自然推进一轮、用量归零，抖音/小红书原禁用状态保持；未将正常周期刷新误报为测试改数据。

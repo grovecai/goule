@@ -12,10 +12,12 @@ import android.widget.TextView
 
 /** Runs only in a disposable application ID; never writes the installed user's rule store. */
 class PageRefreshInstrumentation : Instrumentation() {
+    private var themesOnly = false
     private var healthMemoryOnly = false
     private var foregroundTimingOnly = false
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        themesOnly = arguments?.getString("themesOnly") == "true"
         healthMemoryOnly = arguments?.getString("healthMemoryOnly") == "true"
         foregroundTimingOnly = arguments?.getString("foregroundTimingOnly") == "true"
         start()
@@ -27,6 +29,21 @@ class PageRefreshInstrumentation : Instrumentation() {
         try {
             val context = targetContext
             check(context.packageName == "com.goule.uiverify") { "UI regression requires the isolated app ID" }
+            if (themesOnly) {
+                ThemeMigrationChecks.run(this)
+                activity = startActivitySync(Intent(context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                waitForIdleSync()
+                BlockThemeChecks.run(this)
+                onMain { checkNotNull(activity).finish() }
+                waitForIdleSync()
+                activity = null
+                ThemeManagementChecks.run(this)
+                ServiceHealthMemoryChecks.run(this)
+                result.putString("stream", "PASS: theme imports migration management rendering and image memory lifecycle\n")
+                finish(Activity.RESULT_OK, result)
+                return
+            }
             if (foregroundTimingOnly) {
                 // Keep the disposable app visible: ColorOS may kill an instrumentation-only
                 // process as cached while the replay is sleeping between window events.
@@ -62,7 +79,8 @@ class PageRefreshInstrumentation : Instrumentation() {
                 .putString("items", rules).putLong("clock", now).commit()
             activity = startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             waitForIdleSync()
-            val listRoot = onMain { activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) }
+            val timingActivity = checkNotNull(activity)
+            val listRoot = onMain { timingActivity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) }
             val listCounter = onMain { findText(listRoot, "还可刷 2 分钟") }
             val scroll = onMain { (listRoot as ViewGroup).getChildAt(0) as ScrollView }
             onMain { scroll.scrollTo(0, (200 * context.resources.displayMetrics.density).toInt()) }
@@ -71,7 +89,7 @@ class PageRefreshInstrumentation : Instrumentation() {
             check(oldY > 0) { "Fixture must exercise a scrolled list" }
             waitUntil(listReset + 1_500)
             onMain {
-                check(activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) === listRoot) {
+                check(timingActivity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) === listRoot) {
                     "List timer recreated the entire page"
                 }
                 check(listCounter.isAttachedToWindow && listCounter.text.toString() == "还可刷 10 分钟") {
@@ -83,11 +101,11 @@ class PageRefreshInstrumentation : Instrumentation() {
                 show.invoke(activity, "fixture.two")
             }
             waitForIdleSync()
-            val detailRoot = onMain { activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) }
+            val detailRoot = onMain { timingActivity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) }
             val detailCounter = onMain { findText(detailRoot, "还可刷 1 分钟") }
             waitUntil(detailReset + 1_500)
             onMain {
-                check(activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) === detailRoot) {
+                check(timingActivity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) === detailRoot) {
                     "Detail timer recreated the entire page"
                 }
                 check(detailCounter.isAttachedToWindow && detailCounter.text.toString() == "还可刷 20 分钟") {
@@ -95,11 +113,18 @@ class PageRefreshInstrumentation : Instrumentation() {
                 }
             }
             ForegroundTimingChecks.run(context) { action -> onMain { action() } }
-            onMain { activity.finish() }
+            onMain { timingActivity.finish() }
             waitForIdleSync()
             OnboardingFlowChecks.run(this)
             ThemeMigrationChecks.run(this)
+            // Give import/render checks a visible host, just like a user editing a theme.
+            activity = startActivitySync(Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            waitForIdleSync()
             BlockThemeChecks.run(this)
+            onMain { checkNotNull(activity).finish() }
+            waitForIdleSync()
+            activity = null
             ThemeManagementChecks.run(this)
             ServiceHealthMemoryChecks.run(this)
             result.putString("stream", "PASS: list/detail fixed resets update existing views and preserve scroll\n" +

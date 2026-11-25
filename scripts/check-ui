@@ -17,6 +17,11 @@ cleanup() {
 trap cleanup EXIT
 "$goule_adb" -s "$GOULE_UI_DEVICE" install --no-incremental -r app/build/outputs/apk/debug/app-debug.apk
 "$goule_adb" -s "$GOULE_UI_DEVICE" install --no-incremental -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+# Instrumentation executes in the target APK; its separate provider APK remains
+# stopped after installation on ColorOS unless explicitly started from the test runner.
+goule_provider_start=$("$goule_adb" -s "$GOULE_UI_DEVICE" shell am start -W -n "$goule_fixture.test/com.goule.prototype.ThemeImageFixtureActivity")
+printf '%s\n' "$goule_provider_start"
+[[ "$goule_provider_start" == *"Status: ok"* ]]
 goule_result=$("$goule_adb" -s "$GOULE_UI_DEVICE" shell am instrument -w "$goule_fixture.test/com.goule.prototype.PageRefreshInstrumentation")
 printf '%s\n' "$goule_result"
 [[ "$goule_result" == *"PASS: list/detail fixed resets"* &&

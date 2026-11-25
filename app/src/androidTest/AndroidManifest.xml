@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name="com.goule.prototype.ThemeImageFixtureActivity"
+            android:exported="true" android:theme="@android:style/Theme.NoDisplay" />
         <provider android:name="com.goule.prototype.ThemeImageFixtureProvider"
             android:authorities="com.goule.uiverify.images" android:exported="true" />
     </application>
