@@ -13,9 +13,9 @@
 ## 下载安装
 
 <!-- release-downloads:start -->
-**[国内下载斩心魔 v1.0.1 签名 APK（Gitee）](https://gitee.com/grovecai/goule/releases/download/v1.0.1/goule-v1.0.1.apk)** · [GitHub 备用下载](https://github.com/grovecai/goule/releases/download/v1.0.1/goule-v1.0.1.apk)
+**[国内下载斩心魔 v1.0.2 签名 APK（Gitee）](https://gitee.com/grovecai/goule/releases/download/v1.0.2/goule-v1.0.2.apk)** · [GitHub 备用下载](https://github.com/grovecai/goule/releases/download/v1.0.2/goule-v1.0.2.apk)
 
-Android 11 及以上 · [Gitee 发布说明](https://gitee.com/grovecai/goule/releases/tag/v1.0.1) · [SHA-256](https://gitee.com/grovecai/goule/releases/download/v1.0.1/goule-v1.0.1.apk.sha256) · [GitHub 原发布](https://github.com/grovecai/goule/releases/tag/v1.0.1)
+Android 11 及以上 · [Gitee 发布说明](https://gitee.com/grovecai/goule/releases/tag/v1.0.2) · [SHA-256](https://gitee.com/grovecai/goule/releases/download/v1.0.2/goule-v1.0.2.apk.sha256) · [GitHub 原发布](https://github.com/grovecai/goule/releases/tag/v1.0.2)
 <!-- release-downloads:end -->
 
 ## 它如何工作，有什么限制？

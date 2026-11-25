@@ -6,7 +6,7 @@
   "previous_tag": "v1.0.1",
   "source_commit": "646da16884e91747457405592282a5372400b2e4",
   "prerelease": true,
-  "complete": false,
+  "complete": true,
   "changed_files": [
     "app/src/androidTest/AndroidManifest.xml",
     "app/src/androidTest/java/com/goule/prototype/BlockThemeChecks.kt",
