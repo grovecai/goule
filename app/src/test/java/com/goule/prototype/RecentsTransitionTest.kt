@@ -54,4 +54,37 @@ class RecentsTransitionTest {
         assertTrue(recents.acceptsTarget(disappeared = false))
     }
 
+    @Test fun nonTargetBetweenPaneAndReturnDoesNotLoseClosingState() {
+        recents.launcherEvent("home", 100, true, false)
+        recents.nonTargetWindow()
+        recents.launcherEvent("home", 900, false, false)
+        recents.targetResumed(1_000)
+        assertEquals(Decision.DEFER, recents.launcherEvent("home", 1_450, false, false))
+        assertEquals(Decision.IGNORE, recents.launcherEvent("home", 1_451, false, true))
+        assertEquals(Decision.IGNORE, recents.launcherEvent("home", 1_455, false, false))
+        // An actual non-target switch after resuming must still discard protection.
+        recents.nonTargetWindow()
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 1_460, false, false))
+    }
+
+    @Test fun interruptedPaneCannotProtectAnUnrelatedLaterLaunch() {
+        recents.launcherEvent("home", 100, true, false)
+        recents.nonTargetWindow()
+        recents.targetResumed(1_601)
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 1_602, false, false))
+    }
+
+    @Test fun paneCanCloseBeforeTargetResumesWithoutCoveringCards() {
+        recents.launcherEvent("home", 100, true, false)
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 500, false, true))
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 501, false, false))
+        recents.targetResumed(520)
+        assertEquals(Decision.IGNORE, recents.launcherEvent("home", 525, false, false))
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 621, false, false))
+        recents.launcherEvent("home", 1_000, true, false)
+        recents.launcherEvent("home", 1_100, false, true)
+        recents.targetResumed(2_601)
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 2_602, false, false))
+    }
+
 }

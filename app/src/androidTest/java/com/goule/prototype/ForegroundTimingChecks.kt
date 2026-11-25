@@ -106,6 +106,7 @@ internal object ForegroundTimingChecks {
                 event(service, target)
                 checkOverlayTheme(service, "kitchen")
             }
+            replayRecentsOrdering(service, store, target, launcher, onMain)
             val blockedBeforeDeparture = store.rules.single()
             onMain {
                 event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
@@ -219,6 +220,68 @@ internal object ForegroundTimingChecks {
                 service.onDestroy()
                 BlockAppearanceStore.get(context).setFixed("elder")
             }
+        }
+    }
+
+    private fun replayRecentsOrdering(service: FreezeService, store: RuleStore, target: String,
+        launcher: String, onMain: (() -> Unit) -> Unit,
+    ) {
+        val blocked = store.rules.single()
+        onMain {
+            // 15:19:44: pane appeared, unrelated window, launcher updates, actual target.
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+            event(service, "fixture.intervening")
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            event(service, launcher)
+            event(service, target, className = "fixture.DetailFeedActivity", fullScreen = true)
+            checkOverlayTheme(service, "kitchen")
+        }
+        SystemClock.sleep(450)
+        onMain {
+            event(service, launcher)
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+            event(service, launcher)
+            checkForeground(service, target)
+            checkOverlayTheme(service, "kitchen")
+            check(store.rules.single() == blocked)
+            // A real app/settings switch after resuming must still clear everything.
+            event(service, "com.android.settings")
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+            checkForeground(service, null)
+            checkNoOverlay(service)
+
+            // 15:21:16 / Douyin 14:55:18: the pane closes BEFORE the target event.
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+            val closed = SystemClock.uptimeMillis()
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED, time = closed)
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            event(service, target, className = "fixture.DetailFeedActivity", fullScreen = true, time = closed + 20)
+            event(service, launcher, time = closed + 25)
+            checkForeground(service, target)
+            checkOverlayTheme(service, "kitchen")
+            check(store.rules.single() == blocked)
+        }
+        SystemClock.sleep(200)
+        onMain {
+            event(service, launcher)
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+            event(service, "fixture.intervening")
+            checkNoOverlay(service)
+        }
+        SystemClock.sleep(1_700)
+        onMain {
+            // Old interrupted transition metadata must not protect a later unrelated launch.
+            event(service, target)
+            event(service, launcher)
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            check(store.rules.single() == blocked)
         }
     }
 

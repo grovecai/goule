@@ -6,6 +6,8 @@ internal class RecentsTransition {
 
     private var awaitingLauncher = false
     private var launcher: String? = null
+    private var lastLauncherAt = 0L
+    private var interruptedBeforeResume = false
     private var returnedAt: Long? = null
     private var closedAt: Long? = null
 
@@ -19,7 +21,22 @@ internal class RecentsTransition {
     fun acceptsTarget(disappeared: Boolean): Boolean = !disappeared && !awaitingLauncher
 
     fun targetResumed(time: Long) {
-        if (launcher != null && returnedAt == null) returnedAt = time
+        if (launcher == null || returnedAt != null) return
+        val closed = closedAt
+        if ((interruptedBeforeResume && time - lastLauncherAt !in 0..RETURN_MS) ||
+            (closed != null && time - closed !in 0..RETURN_MS)) {
+            reset()
+            return
+        }
+        returnedAt = time
+        interruptedBeforeResume = false
+    }
+
+    // Card animations can emit an unrelated window before any target has resumed.
+    // Foreground still clears immediately; only unfinished transition metadata survives.
+    fun nonTargetWindow() {
+        if (launcher != null && returnedAt == null) interruptedBeforeResume = true
+        else reset()
     }
 
     fun launcherEvent(packageName: String, time: Long, appeared: Boolean, disappeared: Boolean): Decision {
@@ -27,15 +44,20 @@ internal class RecentsTransition {
         if (appeared) {
             reset()
             launcher = packageName
+            lastLauncherAt = time
             return Decision.PASS
         }
         if (packageName != launcher) {
             reset()
             return Decision.PASS
         }
+        lastLauncherAt = time
         val resumed = returnedAt
         if (resumed == null) {
-            if (disappeared) reset()
+            // Closing the pane can precede the target's own window event.
+            if (disappeared) closedAt = time
+            val closed = closedAt
+            if (closed != null && time - closed !in 0..RETURN_MS) reset()
             return Decision.PASS
         }
         val closed = closedAt
@@ -54,6 +76,8 @@ internal class RecentsTransition {
     fun reset() {
         awaitingLauncher = false
         launcher = null
+        lastLauncherAt = 0L
+        interruptedBeforeResume = false
         returnedAt = null
         closedAt = null
     }
