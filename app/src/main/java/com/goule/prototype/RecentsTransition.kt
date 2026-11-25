@@ -48,6 +48,7 @@ internal class RecentsTransition {
 
     companion object {
         const val SETTLE_MS = 120L
-        private const val RETURN_MS = 1_500L
+        // Recents closes around 450 ms on ColorOS; 120 ms is only the post-close tail.
+        const val RETURN_MS = 1_500L
     }
 }

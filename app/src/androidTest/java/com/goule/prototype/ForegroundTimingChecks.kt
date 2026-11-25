@@ -105,7 +105,41 @@ internal object ForegroundTimingChecks {
                 check(appearance.setPool(setOf("kitchen")))
                 event(service, target)
                 checkOverlayTheme(service, "kitchen")
+            }
+            // Captured ColorOS sequence: target, unmarked launcher, own overlay,
+            // then pane disappearance ~450 ms later. The old 120 ms fallback removed it.
+            val blockedBeforeRecents = store.rules.single()
+            repeat(3) {
+                onMain {
+                    event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                    event(service, target)
+                    event(service, launcher)
+                }
+                SystemClock.sleep(450)
+                onMain {
+                    checkForeground(service, target)
+                    checkOverlayTheme(service, "kitchen")
+                    event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                    event(service, launcher)
+                }
+                SystemClock.sleep(200)
+                onMain {
+                    checkForeground(service, target)
+                    checkOverlayTheme(service, "kitchen")
+                    check(store.rules.single() == blockedBeforeRecents) { "Recents changed blocked usage/deadline" }
+                }
+            }
+            onMain {
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                event(service, target)
+                event(service, launcher)
+            }
+            SystemClock.sleep(1_700)
+            onMain {
+                checkForeground(service, null)
+                event(service, target)
                 // A preference change or repeated tick must not replace an attached theme/deadline.
+                val appearance = BlockAppearanceStore.get(context)
                 check(appearance.setFixed("exam"))
                 val blocked = store.rules.single()
                 repeat(4) {

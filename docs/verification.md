@@ -976,3 +976,9 @@ OPPO PLJ110，Android 16/API 36，ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(C
 06:35:45.256 系统 events 明确 `o-kill(4013)` / `FastClear[4013]` 杀死本包 pid=28181，06:35:45.447 进程死亡，退出历史 06:35:45.474 为 reason=13 / OTHER KILLS BY SYSTEM；不是本应用 crash/ANR 的证据。用户明确当时未清理、正常使用，确认系统自动清理后异常断连。06:56:56 采集时 Enabled 含 FreezeService、Bound/Binding 空、Crashed 含服务；主界面新进程已运行仍未恢复。boot_count=9，连续开机约 6 天 8 小时，未发生本轮重启撤权。清理前持久日志仍 connected=true，无服务正常收尾；相机使用与内存状态变化仅是触发线索，具体厂商策略未确定。
 
 当前服务未恢复，末次只读绑定复核结果相同；未验收恢复后数据保持或自动清理修复，未实施产品增强或发布。原始资料在本机 `/Users/caiyuanrui/.cache/goule-android/service-stop-20261118/`，不提交整份日志。`./scripts/check` 通过：Python 46 项、Gradle Debug/Release 单元测试与 Lint 检查、Debug/AndroidTest APK 构建（现有 Android 任务大部分复用缓存）；本轮没有运行设备回归，不据此宣称恢复或 FastClear 修复通过。详见 [完整诊断及增强建议](service-stop-diagnosis-2026-11-18.md)。
+
+## 最近任务延迟收尾漏拦截（2026-11-25）
+
+只读采集 OPPO PLJ110（Android 16、ColorOS V16.1.0）正式包服务持久日志，原始系统资料仅保留本机私有缓存，未改戒律、权限或操作抖音。08:10:20.166 收到目标恢复后的 launcher changes=0，决定 DEFER；08:10:20.295 执行 launcher settle 并撤下遮罩，此时抖音 usedMs=300000、remainingMs=0、blockedUntil 未变。08:13:58 与 08:16:51 同类路径再次出现。成功路径 08:17:24.986/989 显示收尾事件约在目标恢复 480 ms 后才到，PANE_DISAPPEARED 会取消待退出回调。证据确认至少这条漏拦截由 120 ms 提前撤罩造成，不把其他未知系统窗口一并归因。
+
+修复：关闭前等待改为 1500 ms，关闭后 120 ms 尾随事件窗口保持；新窗格出现、其他 App、锁屏与断开保留退出路径。生产 Service 重放新增三次 450 ms 延迟收尾、遮罩与原截止保持、缺失关闭事件的有界退出检查。`JAVA_HOME=<本机 JDK 17> ANDROID_HOME=<本机 SDK> GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过：Python 46 项、Debug/Release 各 68 项零失败，Lint/构建通过；Android 15/API 35 模拟器十二组全部 PASS，包含新增生产 Service 延迟收尾重放、连续三次返回遮罩/截止保持及缺失关闭信号退出。首次检查因拆分测试代码后的局部变量作用域编译失败，已修正并完整重跑通过。正式手机尚未安装修复包，真实 ColorOS 动画与连续返回仍待验证；本轮未发布。

@@ -24,7 +24,7 @@
 | --- | --- |
 | App 列表 | 用 `PackageManager` 查询 `MAIN / LAUNCHER` Activity。通过 manifest 的 `<queries>` 声明所需范围，按包名去重，排除「斩心魔」自身、桌面、设置、来电和紧急等系统入口。 [包可见性](https://developer.android.com/training/package-visibility/declaring) |
 | 规则引擎 | 独立于 Android 界面的纯 Kotlin 状态转换。输入为前台切换、锁屏/唤醒、到期、编辑和权限状态；输出为累计更新及拦截决策。 |
-| 前台识别 | 验证 `TYPE_WINDOW_STATE_CHANGED` 是否足以区分目标 App、离开和系统窗口。监听包名、时间和启动器窗格出现或消失信号。目标从最近任务恢复时，合并启动器的短促收尾事件，避免撤下已经恢复的禁用遮罩。其他包只用于判断是否离开，随即丢弃。关闭窗口内容读取，不遍历节点、不读取输入、不截图。 [事件与能力配置](https://developer.android.com/reference/android/accessibilityservice/AccessibilityServiceInfo) |
+| 前台识别 | 验证 `TYPE_WINDOW_STATE_CHANGED` 是否足以区分目标 App、离开和系统窗口。监听包名、时间和启动器窗格出现或消失信号。目标从最近任务恢复时，合并启动器的短促收尾事件，避免撤下已经恢复的禁用遮罩。等待窗格关闭信号的上限为 1500 ms，关闭后仅合并 120 ms 内的尾随事件；不再以 120 ms 作为关闭前等待时间。新的窗格出现、其他 App、锁屏仍正常退出。其他包只用于判断是否离开，随即丢弃。关闭窗口内容读取，不遍历节点、不读取输入、不截图。 [事件与能力配置](https://developer.android.com/reference/android/accessibilityservice/AccessibilityServiceInfo) |
 | 拦截 | 服务确认当前目标 App 正处于禁用时，附着可触摸的 `TYPE_ACCESSIBILITY_OVERLAY`。切换到其他应用、服务断开或到期时撤下。「返回桌面」请求 `GLOBAL_ACTION_HOME`。「关闭 App」打开系统最近任务，由用户上滑移除目标卡片。操作失败时保留有效遮罩并允许系统导航。 |
 | 存储与时间 | 按包名保存规则、当前周期起点与累计量、可刷额度和周期快照、最近禁用开始、已计时水位、创建时间和上次成功修改时间。重报或重叠的观察区间不重复累计。滚动版区间合并为已保存累计量；早期累计版直接保留用量。旧起点加周期仍在最后保存时间之后时沿用该起点，否则以最后保存时间开启一个保留已用量的固定周期，避免切换模型直接清零；尚有效的旧禁用截止保留为下限。无法恢复旧版本已清空或未提交的用量。配置与禁用切换立即提交，前台使用进度约每 5 秒保存并在离开时提交。规则时钟同一次开机依赖 `elapsedRealtime`，跨开机按系统时间恢复，并以最近保存的规则时间为下限。 |
 

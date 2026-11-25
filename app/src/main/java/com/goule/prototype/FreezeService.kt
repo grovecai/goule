@@ -198,7 +198,7 @@ class FreezeService : AccessibilityService() {
             when (decision) {
                 RecentsTransition.Decision.PASS -> reconcile(null, "launcher pass")
                 RecentsTransition.Decision.DEFER ->
-                    handler.postDelayed(leaveAfterLauncherEvent, RecentsTransition.SETTLE_MS)
+                    handler.postDelayed(leaveAfterLauncherEvent, RecentsTransition.RETURN_MS)
                 RecentsTransition.Decision.IGNORE -> Unit
             }
             return

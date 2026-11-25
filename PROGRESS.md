@@ -1,8 +1,10 @@
 # 斩心魔进度
 
-更新于 2026-11-18。
+更新于 2026-11-25。
 
 ## 当前状态
+
+2026-11-25 已从 OPPO PLJ110（Android 16、ColorOS V16.1.0）持久日志确认最近任务返回抖音时，120 ms 的 launcher settle 会在约 450 ms 窗格关闭信号前撤下禁用遮罩，期间额度为零且截止保持。已将关闭前等待改为 1500 ms，关闭后尾随窗口仍为 120 ms；新增延迟关闭、连续返回、截止保持及缺失关闭信号退出回归。`./scripts/check` 通过（Python 46 项、Debug/Release 各 68 项、Lint/构建及 Android 15/API 35 模拟器十二组），详见 [验证手册](docs/verification.md#最近任务延迟收尾漏拦截2026-11-25)。本轮只读采集正式手机，未覆盖安装或发布，真实 ColorOS 连续返回待验证。
 
 2026-11-18T15:36:24+08:00 Actions 已完成 v1.0.1/code 22 原签名自动发布及 Gitee 同步，两端附件回下载一致，README 下载已更新。自动验收见 [发布记录](docs/latest-release-verification.json)；本次 CI 不代表新的真机行为回归。
 

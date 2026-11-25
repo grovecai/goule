@@ -23,4 +23,17 @@ class RecentsTransitionTest {
         assertEquals(Decision.PASS, recents.launcherEvent("home", 500, true, false))
         assertEquals(Decision.PASS, recents.launcherEvent("home", 550, false, false))
     }
+    @Test fun delayedCloseAndMissingCloseHaveBoundedReturnWindow() {
+        recents.launcherEvent("home", 100, true, false)
+        recents.targetResumed(200)
+        assertEquals(Decision.DEFER, recents.launcherEvent("home", 220, false, false))
+        assertEquals(Decision.IGNORE, recents.launcherEvent("home", 650, false, true))
+        assertEquals(Decision.IGNORE, recents.launcherEvent("home", 655, false, false))
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 900, false, false))
+        recents.launcherEvent("home", 1_000, true, false)
+        recents.targetResumed(1_100)
+        assertEquals(Decision.DEFER, recents.launcherEvent("home", 1_120, false, false))
+        assertEquals(Decision.PASS, recents.launcherEvent("home", 2_601, false, false))
+    }
+
 }
