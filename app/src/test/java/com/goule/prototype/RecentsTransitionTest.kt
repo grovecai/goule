@@ -2,6 +2,8 @@ package com.goule.prototype
 
 import com.goule.prototype.RecentsTransition.Decision
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecentsTransitionTest {
@@ -34,6 +36,22 @@ class RecentsTransitionTest {
         recents.targetResumed(1_100)
         assertEquals(Decision.DEFER, recents.launcherEvent("home", 1_120, false, false))
         assertEquals(Decision.PASS, recents.launcherEvent("home", 2_601, false, false))
+    }
+
+    @Test fun departedPaneCannotResumeAndOpeningWaitsForLauncherResponse() {
+        assertFalse(recents.acceptsTarget(disappeared = true))
+        assertTrue(recents.acceptsTarget(disappeared = false))
+        recents.openRequested()
+        assertFalse(recents.acceptsTarget(disappeared = false))
+        recents.launcherEvent("home", 100, true, false)
+        assertFalse(recents.acceptsTarget(disappeared = true))
+        assertTrue(recents.acceptsTarget(disappeared = false))
+        recents.openRequested()
+        recents.launcherEvent("home", 200, false, false)
+        assertTrue(recents.acceptsTarget(disappeared = false))
+        recents.openRequested()
+        recents.reset()
+        assertTrue(recents.acceptsTarget(disappeared = false))
     }
 
 }

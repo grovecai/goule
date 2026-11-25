@@ -106,6 +106,53 @@ internal object ForegroundTimingChecks {
                 event(service, target)
                 checkOverlayTheme(service, "kitchen")
             }
+            val blockedBeforeDeparture = store.rules.single()
+            onMain {
+                event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                event(service, target, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED,
+                    className = "fixture.CustomRelativeLayout")
+                checkForeground(service, null)
+                checkNoOverlay(service)
+            }
+            repeat(3) {
+                onMain {
+                    FreezeService::class.java.getDeclaredMethod("onRecentsOpened").apply {
+                        isAccessible = true
+                    }.invoke(service)
+                    // Old activity callbacks during the global-action animation must not reattach.
+                    event(service, target, className = "fixture.MainActivity", fullScreen = true)
+                    checkForeground(service, null)
+                    checkNoOverlay(service)
+                    event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                    // Captured Douyin card-entry sequence. This is departure, not a resume.
+                    event(service, target, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED,
+                        className = "fixture.CustomRelativeLayout")
+                    event(service, launcher)
+                    checkForeground(service, null)
+                    checkNoOverlay(service)
+                }
+                SystemClock.sleep(1_700)
+                onMain {
+                    checkForeground(service, null)
+                    checkNoOverlay(service)
+                    // A later actual return must still retain the launcher pane's closing state.
+                    if (it % 2 == 0) event(service, target, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
+                    event(service, target, className = "fixture.MainActivity", fullScreen = true)
+                    checkForeground(service, target)
+                    checkOverlayTheme(service, "kitchen")
+                    event(service, launcher)
+                    // A late old pane disappearance must not cancel pending launcher reconciliation.
+                    event(service, target, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                }
+                SystemClock.sleep(450)
+                onMain {
+                    event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+                    event(service, launcher)
+                    checkForeground(service, target)
+                    checkOverlayTheme(service, "kitchen")
+                    check(store.rules.single() == blockedBeforeDeparture)
+                }
+            }
             // Captured ColorOS sequence: target, unmarked launcher, own overlay,
             // then pane disappearance ~450 ms later. The old 120 ms fallback removed it.
             val blockedBeforeRecents = store.rules.single()
@@ -133,6 +180,7 @@ internal object ForegroundTimingChecks {
                 event(service, launcher, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED)
                 event(service, target)
                 event(service, launcher)
+                event(service, target, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
             }
             SystemClock.sleep(1_700)
             onMain {
@@ -165,12 +213,100 @@ internal object ForegroundTimingChecks {
                 checkForeground(service, null)
                 check(store.rules.single() == blocked)
             }
+            checkOverlayLifecycle(service, store, target, launcher, onMain)
         } finally {
             if (attached) onMain {
                 service.onDestroy()
                 BlockAppearanceStore.get(context).setFixed("elder")
             }
         }
+    }
+
+    private fun checkOverlayLifecycle(service: FreezeService, store: RuleStore, target: String,
+        launcher: String, onMain: (() -> Unit) -> Unit,
+    ) {
+        val otherTarget = "fixture.other.timing"
+        onMain {
+            val now = store.now()
+            check(store.configure(listOf(
+                Rule(target, "即将用满", 1, 15, now - 2 * MINUTE,
+                    cycleStart = now, usedMs = MINUTE - 300),
+            )))
+            FreezeService::class.java.getDeclaredField("eligible").apply { isAccessible = true }
+                .set(service, setOf(target))
+            event(service, target)
+            checkNoOverlay(service)
+        }
+        SystemClock.sleep(650)
+        onMain {
+            checkOverlayTheme(service, "exam")
+            check(store.rules.single().usedMs == MINUTE)
+            check(store.rules.single().isBlocked(store.now()))
+        }
+        onMain {
+            val now = store.now()
+            check(store.configure(listOf(
+                Rule(target, "禁用 A", 1, 15, now - 2 * MINUTE,
+                    cycleStart = now, usedMs = MINUTE, blockedFrom = now),
+                Rule(otherTarget, "可刷 B", 1, 15, now - 2 * MINUTE),
+            )))
+            FreezeService::class.java.getDeclaredField("eligible").apply { isAccessible = true }
+                .set(service, setOf(target, otherTarget))
+            event(service, target)
+            checkOverlayTheme(service, "exam")
+            val blocked = store.rules.first()
+            // Unconfigured apps, settings and Home must each remove the blocked overlay.
+            for (exit in listOf("fixture.unconfigured", "com.android.settings", launcher)) {
+                event(service, exit)
+                checkForeground(service, null)
+                checkNoOverlay(service)
+                event(service, target)
+                checkOverlayTheme(service, "exam")
+                check(store.rules.first() == blocked)
+            }
+            event(service, otherTarget)
+            checkForeground(service, otherTarget)
+            checkNoOverlay(service)
+            check(store.rules.first() == blocked)
+            // Both directions must select the correct rule rather than retain another app's overlay.
+            event(service, target)
+            checkOverlayTheme(service, "exam")
+            event(service, otherTarget)
+            checkNoOverlay(service)
+            val nowExpiry = store.now()
+            check(store.configure(listOf(
+                Rule(target, "到期 A", 1, 15, nowExpiry - 20 * MINUTE,
+                    cycleStart = nowExpiry - 16 * MINUTE + 800, usedMs = MINUTE,
+                    blockedFrom = nowExpiry - MINUTE),
+                Rule(otherTarget, "仍禁用 B", 1, 15, nowExpiry - 2 * MINUTE,
+                    cycleStart = nowExpiry, usedMs = MINUTE, blockedFrom = nowExpiry),
+            )))
+            FreezeService::class.java.getDeclaredField("eligible").apply { isAccessible = true }
+                .set(service, setOf(target, otherTarget))
+            event(service, target)
+            checkOverlayTheme(service, "exam")
+        }
+        SystemClock.sleep(1_100)
+        onMain {
+            checkForeground(service, target)
+            checkNoOverlay(service)
+            check(!store.rules.first().isBlocked(store.now()))
+            event(service, otherTarget)
+            checkOverlayTheme(service, "exam")
+            check(store.rules.last().isBlocked(store.now()))
+            service.onInterrupt()
+            checkForeground(service, null)
+            checkNoOverlay(service)
+            // Disconnected/cleared state cannot be revived by a pane disappearing.
+            event(service, otherTarget, AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED)
+            checkForeground(service, null)
+            checkNoOverlay(service)
+        }
+    }
+
+    private fun checkNoOverlay(service: FreezeService) {
+        check(FreezeService::class.java.getDeclaredField("overlay").apply { isAccessible = true }
+            .get(service) == null) { "Recents was covered by an overlay" }
     }
 
     private fun checkOverlayTheme(service: FreezeService, id: String) {

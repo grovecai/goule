@@ -4,15 +4,26 @@ package com.goule.prototype
 internal class RecentsTransition {
     enum class Decision { PASS, DEFER, IGNORE }
 
+    private var awaitingLauncher = false
     private var launcher: String? = null
     private var returnedAt: Long? = null
     private var closedAt: Long? = null
+
+    fun openRequested() {
+        reset()
+        awaitingLauncher = true
+    }
+
+    // A pane disappearing belongs to the departing app, not the new foreground.
+    // After our Recents action, old activity callbacks can precede the launcher.
+    fun acceptsTarget(disappeared: Boolean): Boolean = !disappeared && !awaitingLauncher
 
     fun targetResumed(time: Long) {
         if (launcher != null && returnedAt == null) returnedAt = time
     }
 
     fun launcherEvent(packageName: String, time: Long, appeared: Boolean, disappeared: Boolean): Decision {
+        awaitingLauncher = false
         if (appeared) {
             reset()
             launcher = packageName
@@ -41,6 +52,7 @@ internal class RecentsTransition {
     }
 
     fun reset() {
+        awaitingLauncher = false
         launcher = null
         returnedAt = null
         closedAt = null

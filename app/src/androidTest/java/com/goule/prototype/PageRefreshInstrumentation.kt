@@ -13,9 +13,11 @@ import android.widget.TextView
 /** Runs only in a disposable application ID; never writes the installed user's rule store. */
 class PageRefreshInstrumentation : Instrumentation() {
     private var healthMemoryOnly = false
+    private var foregroundTimingOnly = false
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         healthMemoryOnly = arguments?.getString("healthMemoryOnly") == "true"
+        foregroundTimingOnly = arguments?.getString("foregroundTimingOnly") == "true"
         start()
     }
 
@@ -25,6 +27,17 @@ class PageRefreshInstrumentation : Instrumentation() {
         try {
             val context = targetContext
             check(context.packageName == "com.goule.uiverify") { "UI regression requires the isolated app ID" }
+            if (foregroundTimingOnly) {
+                // Keep the disposable app visible: ColorOS may kill an instrumentation-only
+                // process as cached while the replay is sleeping between window events.
+                activity = startActivitySync(Intent(context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                waitForIdleSync()
+                ForegroundTimingChecks.run(context) { action -> onMain { action() } }
+                result.putString("stream", "PASS: foreground timing and recents departure/return replay\n")
+                finish(Activity.RESULT_OK, result)
+                return
+            }
             if (healthMemoryOnly) {
                 ServiceHealthMemoryChecks.run(this)
                 result.putString("stream", "PASS: service interruption evidence persists and background images release and reload safely\n")

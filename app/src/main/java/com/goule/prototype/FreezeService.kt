@@ -153,7 +153,7 @@ class FreezeService : AccessibilityService() {
             null -> "no-package"
             in eligible -> "target=$name class=${event.className} fullScreen=${event.isFullScreen}"
             packageName -> "self"
-            in launchers -> "launcher"
+            in launchers -> "launcher class=${event.className} fullScreen=${event.isFullScreen}"
             "com.android.systemui" -> "system-ui class=${event.className} fullScreen=${event.isFullScreen}"
             else -> "other"
         }
@@ -186,6 +186,13 @@ class FreezeService : AccessibilityService() {
             reconcile(foreground, "passive ColorOS container")
             return
         }
+        val target = name?.takeIf { it in eligible }
+        val disappeared = event.contentChangeTypes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED != 0
+        if (target != null && !recents.acceptsTarget(disappeared)) {
+            observe("target does not establish foreground disappeared=$disappeared; retain current")
+            reconcile(foreground, "target departure or recents opening")
+            return
+        }
         handler.removeCallbacks(leaveAfterLauncherEvent)
         if (name != null && name in launchers) {
             val changes = event.contentChangeTypes
@@ -203,7 +210,6 @@ class FreezeService : AccessibilityService() {
             }
             return
         }
-        val target = name?.takeIf { it in eligible }
         reconcile(target, "window $category")
         // Recents' trailing launcher events also arrive while an app is still usable.
         if (target != null) recents.targetResumed(event.eventTime) else recents.reset()
@@ -290,7 +296,7 @@ class FreezeService : AccessibilityService() {
         val view = FreezeOverlayView(this, rule.label, deadlineLabel(deadline, now),
             onCloseTarget = {
                 if (performGlobalAction(GLOBAL_ACTION_RECENTS)) {
-                    clearForeground("overlay open recents")
+                    onRecentsOpened()
                     Toast.makeText(this, R.string.close_target_hint, Toast.LENGTH_SHORT).show()
                 } else Toast.makeText(this, R.string.recents_failed, Toast.LENGTH_SHORT).show()
             },
@@ -320,6 +326,11 @@ class FreezeService : AccessibilityService() {
             observe("overlay attach failed kind=${error.javaClass.simpleName}")
             Log.w(TAG, "Could not attach freeze overlay", error)
         }
+    }
+
+    private fun onRecentsOpened() {
+        clearForeground("overlay open recents")
+        recents.openRequested()
     }
 
     private fun hideOverlay() {
