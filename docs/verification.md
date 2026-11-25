@@ -982,3 +982,11 @@ OPPO PLJ110，Android 16/API 36，ColorOS V16.1.0，系统 `PLJ110_16.0.10.502(C
 只读采集 OPPO PLJ110（Android 16、ColorOS V16.1.0）正式包服务持久日志，原始系统资料仅保留本机私有缓存，未改戒律、权限或操作抖音。08:10:20.166 收到目标恢复后的 launcher changes=0，决定 DEFER；08:10:20.295 执行 launcher settle 并撤下遮罩，此时抖音 usedMs=300000、remainingMs=0、blockedUntil 未变。08:13:58 与 08:16:51 同类路径再次出现。成功路径 08:17:24.986/989 显示收尾事件约在目标恢复 480 ms 后才到，PANE_DISAPPEARED 会取消待退出回调。证据确认至少这条漏拦截由 120 ms 提前撤罩造成，不把其他未知系统窗口一并归因。
 
 修复：关闭前等待改为 1500 ms，关闭后 120 ms 尾随事件窗口保持；新窗格出现、其他 App、锁屏与断开保留退出路径。生产 Service 重放新增三次 450 ms 延迟收尾、遮罩与原截止保持、缺失关闭事件的有界退出检查。`JAVA_HOME=<本机 JDK 17> ANDROID_HOME=<本机 SDK> GOULE_UI_DEVICE=emulator-5554 ./scripts/check` 通过：Python 46 项、Debug/Release 各 68 项零失败，Lint/构建通过；Android 15/API 35 模拟器十二组全部 PASS，包含新增生产 Service 延迟收尾重放、连续三次返回遮罩/截止保持及缺失关闭信号退出。首次检查因拆分测试代码后的局部变量作用域编译失败，已修正并完整重跑通过。正式手机尚未安装修复包，真实 ColorOS 动画与连续返回仍待验证；本轮未发布。
+
+## 最近任务修复包保留数据安装（2026-11-25）
+
+用户明确要求安装。08:29:21（北京时间）在 OPPO PLJ110（Android 16、ColorOS V16.1.0）通过 `adb install --no-incremental -r` 成功保留数据覆盖安装：从 1.0.0/code 21 更新为 `d9cfcdc` 的 1.0.1/code 22 最近任务延迟收尾修复功能构建，与既有 v1.0.1 发行资产不同，本轮未发布。
+
+Release 构建通过，APK 嵌入源码、包名、非调试标记、Android 11 最低版本、原证书 SHA-256 与 16 KiB ZIP 对齐检查通过。签名过程首次因同一单行密码文件被重复读取而失败，随后改为环境变量传入并验证成功，未更换证书。安装前启动本应用取得稳定空前台快照；安装后回拉 APK 与本地 SHA-256 相同，appId/首次安装时间保持，三条戒律配置及当前周期参数、usedMs/remainingMs/cycleStart/blockedUntil/eligible 逐项完全一致。启动 Status: ok，服务 connected=true consent=true，journal failures=0。
+
+私有安装资料位于本机 `~/.cache/goule-android/recents-install-20261125/`，未提交设备原始日志、密钥或密码。未卸载/清数据，未修改戒律/主题或开关权限，未操作抖音验证真实动画。前轮 Android 15/API 35 事件重放通过不替代本轮 ColorOS 自然连续返回验收，该项待用户使用确认。
